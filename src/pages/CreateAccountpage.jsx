@@ -26,7 +26,6 @@ function CreateAccountpage() {
     let newErrors = {};
 
      const nameRegex = /^[A-Za-z]+(?:\s[A-Za-z]+)*$/;
-
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
     } else if (!nameRegex.test(formData.name)) {
@@ -39,16 +38,16 @@ function CreateAccountpage() {
     }
 
     const passwordRegex =
-      /^(?=.*[a-z])(?=.*\d)[a-z\d]{8,}$/;
+          /^(?=.*[a-z])(?=.*\d).{8,}$/
       if (!passwordRegex.test(formData.password)) {
-        newErrors.password = "Password must be 8 characters and include lowercase letters and at least one number";
+        newErrors.password = "Password must  at least 8 characters and include lowercase letters and at least one number";
       }
 
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = "Confirm your password"
       } 
       else if (
-        passwordRegex.test (formData.password) &&
+        // passwordRegex.test (formData.password) &&
         formData.password !== formData.confirmPassword){
         newErrors.confirmPassword=" Passwords do not match"
       }
