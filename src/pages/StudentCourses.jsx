@@ -53,6 +53,13 @@ function StudentCourses() {
 
     const updatedCourses = [...enrolledCourses, courseTitle];
     
+     const newActivity = {
+       message: `Enrolled in ${courseTitle}`,
+       xp: 50,
+       date: new Date().toISOString(),
+       type: "enrollment",
+     }; 
+
     const updatedUser = {
       ...currentUser,
       xp: (currentUser.xp || 0) + 50,
@@ -61,15 +68,24 @@ function StudentCourses() {
         enrolledCourses: updatedCourses,
       },
       activities: [
-        ...(currentUser.activities || []),
-        `Enrolled in ${courseTitle}`,
+       newActivity,
+       ...(currentUser.activities || []),
       ],
     };
 
-    updateProfile(updatedUser.profile);
+     const users = JSON.parse(localStorage.getItem("users") || "[]");
+     const updatedUsers = users.map((u) =>
+       u.email === currentUser.email ? updatedUser : u,
+     );
 
     localStorage.setItem("user", JSON.stringify(updatedUser));
-    alert("Enrolled successfully!");
+    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+    updateProfile(updatedUser.profile);
+
+    alert("Enrolled successfully! +50 XP");
+
+    window.location.reload();
     };
 
   return (
