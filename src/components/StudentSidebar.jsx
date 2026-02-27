@@ -30,11 +30,11 @@ function StudentSidebar() {
       <h2 className="text-xl font-bold text-[#5a6499] mb-8">Logo</h2>
 
       <nav className="space-y-2">
-        <NavLink className={linkClass} to={dashboardPath}>
+        <NavLink className={linkClass} to={dashboardPath} end>
           Dashboard
         </NavLink>
 
-        <NavLink className={linkClass} to="/studentcourse">
+        <NavLink className={linkClass} to="/studentcourses">
           My Courses
         </NavLink>
 
@@ -44,6 +44,10 @@ function StudentSidebar() {
 
         <NavLink className={linkClass} to="/profile">
           Profile
+        </NavLink>
+
+        <NavLink className={linkClass} to="/progress">
+          Progress
         </NavLink>
       </nav>
 

@@ -60,6 +60,8 @@ function App() {
           </AuthRoute>
         }
       ></Route>
+      <Route path="/forgotpassword" element={<ForgotPassword />} />
+
       <Route
         path="/studentonboarding"
         element={
@@ -86,11 +88,6 @@ function App() {
         path="/leaderboardpreview"
         element={<LeaderboardPreview />}
       ></Route>
-      <Route path="/progress" element={<StudentProgress />}></Route>
-      <Route path="/quiz" element={<CreateQuiz />}></Route>
-      <Route path="/upload" element={<UploadMaterials />}></Route>
-      <Route path="/settings" element={<Settings />}></Route>
-      <Route path="/gamification" element={<Gamification />}></Route>
       <Route path="/courses" element={<MyCourses />}></Route>
       <Route path="/welcomebasic" element={<WelcomeBasic />}></Route>
       <Route path="/recentactivity" element={<RecentActivity />}></Route>
@@ -98,46 +95,34 @@ function App() {
       <Route path="/mycoursesbasic" element={<MyCoursesBasic />}></Route>
       <Route path="/student/courses/:id" element={<CourseDetails />}></Route>
       <Route path="/protectedroute" element={<ProtectedRoute />}></Route>
-      <Route
-        path="/studentdashboardbasic"
-        element={
-          <ProtectedRoute allowedRole="student">
-            <StudentDashboardBasic />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/studentdashboard"
-        element={
-          <ProtectedRoute allowedRole="student">
-            <StudentDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/studentcourses"
-        element={
-          <ProtectedRoute allowedRole="student">
-            <StudentCourses />
-          </ProtectedRoute>
-        }
-      />
 
-      <Route
-        path="/lecturerdashboard"
-        element={
-          <ProtectedRoute allowedRole="lecturer">
-            <LecturerDashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route element={<ProtectedRoute allowedRole="student" />}>
+        <Route path="/studentdashboard" element={<StudentDashboard />} />
+        <Route
+          path="/studentdashboardbasic"
+          element={<StudentDashboardBasic />}
+        />
+        <Route path="/studentcourses" element={<StudentCourses />} />
+        <Route path="/student/courses/:id" element={<CourseDetails />} />
+        <Route path="/studentactivity" element={<StudentActivity />} />
+        <Route path="/profile" element={<StudentProfile />} />
+        <Route path="/editstudentprofile" element={<EditStudentProfile />} />
+        <Route path="/progress" element={<StudentProgress />} />
+      </Route>
+
+      <Route element={<ProtectedRoute allowedRole="lecturer" />}>
+        <Route path="/lecturerdashboard" element={<LecturerDashboard />} />
+        <Route path="/lecturerprofile" element={<LecturerProfile />} />
+        <Route path="/createquiz" element={<CreateQuiz />} />
+        <Route path="/upload" element={<UploadMaterials />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/gamification" element={<Gamification />} />
+      </Route>
+
       <Route path="/redirect" element={<RoleRedirect />} />
-      <Route path="/profile" element={<StudentProfile />} />
-      <Route path="/lecturerprofile" element={<LecturerProfile />} />
-      <Route path="/studentactivity" element={<StudentActivity />} />
-      <Route path="/editstudentprofile" element={<EditStudentProfile />} />
-      <Route path="/forgotpassword" element={<ForgotPassword />} />
-      <Route path="/studentcourse" element={<StudentCourses />} />
     </Routes>
   );
 }

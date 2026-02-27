@@ -8,13 +8,13 @@ function OnboardingRoute({children, role}) {
     if (!currentUser) return <Navigate to="/login" replace/>;
 
     if (currentUser.onboarded) {
-        return <Navigate to="/redirect" replace/>;
+        return <Navigate to={`/${currentUser.role}dashboard`} replace/>;
     }
 
     if (role && currentUser.role !== role) {
         return <Navigate to="/redirect" replace/>;
     }
-  return children;
+  return children ? children : <Outlet />;
 }
 
 export default OnboardingRoute

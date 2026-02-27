@@ -45,14 +45,17 @@ function StudentOnboarding() {
 
   const prevStep = () => setStep((prev) => prev -1);
 
-  const finish = () => {
-    completeOnboarding(formData, xp);
-    trackActivity("Completed Onboarding", 50, "onboarding");
+const finish = () => {
+  console.log("Finishing onboarding with data:", formData);
+  console.log("XP earned:", xp);
 
-    setTimeout(() => {
-      navigate("/studentdashboard");
-    }, 100);
-  };
+  completeOnboarding(formData, xp);
+  trackActivity("Completed Onboarding", 50, "onboarding");
+
+  console.log("Onboarding functions called");
+
+  navigate("/redirect");
+};
 
   const progressWidth = `${(step / totalSteps) * 100}%`;
 
