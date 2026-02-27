@@ -50,7 +50,7 @@ function StudentOnboarding() {
     trackActivity("Completed Onboarding", 50, "onboarding");
 
     setTimeout(() => {
-      navigate("/redirect");
+      navigate("/studentdashboard");
     }, 100);
   };
 

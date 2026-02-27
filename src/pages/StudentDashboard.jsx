@@ -26,8 +26,7 @@ function StudentDashboard() {
     return <div>Loading....</div>
   }
 
-    const isNewUser = 
-    !currentUser?.onboarded;
+    const isNewUser = !currentUser?.onboarded;
     // ||
     // !currentUser?.profile ||
     // !currentUser?.profile?.enrolledCourses?.length ||

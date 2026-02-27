@@ -102,10 +102,11 @@ export const AuthProvider = ({ children }) => {
         profile: onboardingData,
     });
 
+    let updatedUser = null;
+
      const updatedUsers = users.map((u) =>{
         if (u.email === currentUser.email) {
-            return {
-                ...u,
+            updateUser = {        ...u,
                 onboarded: true,
                 profile: {
                     name: u.name,
@@ -119,10 +120,10 @@ export const AuthProvider = ({ children }) => {
             },
                 ]
             };
+            return updateUser;  
         }
         return u;
-     }
-     );
+     });
 
      saveUsers(updatedUsers);
     setCurrentUser(updatedUser);
