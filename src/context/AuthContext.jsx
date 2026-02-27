@@ -40,9 +40,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   const newUser ={
-    name,
-    email,
-    password,
+    name: name.trim(),
+    email: email.trim(),
+    password: password.trim(),
     role,
     onboarded: false,
     xp: 0,
@@ -102,27 +102,22 @@ export const AuthProvider = ({ children }) => {
         profile: onboardingData,
     });
 
-    const updatedUser = {
-        ...currentUser,
-        onboarded: true,
-        profile: {
-            name: currentUser.name,
-            ...onboardingData,
-        enrolledCourses: [],
-        },
-        learningPath: recommendedCourses,
-        xp: xpEarned || 0,
-        activities: [
-            { type: "profile", message: "Completed profile", xp: 20, date: new Date().toISOString(),
-            },
-        ],
-    };
-
      const updatedUsers = users.map((u) =>{
         if (u.email === currentUser.email) {
             return {
                 ...u,
-                ...updatedUser,
+                onboarded: true,
+                profile: {
+                    name: u.name,
+                    ...onboardingData,
+                    enrolledCourses: [],
+                },
+                learningPath:recommendedCourses,
+                xp: xpEarned || 0,
+                activities: [
+                     { type: "profile", message: "Completed profile", xp: 20, date: new Date().toISOString(),
+            },
+                ]
             };
         }
         return u;
