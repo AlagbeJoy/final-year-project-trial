@@ -10,15 +10,19 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem("currentUser");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
+      console.log("AuthProvider - loading user:", parsedUser);
+      console.log("AuthProvider - onboarded:", parsedUser.onboarded);
 
       const xp = parsedUser.xp || 0;
 
-      setCurrentUser({
+      const hydratedUser = {
         ...parsedUser,
-        xp,
         level: calculateLevel(xp),
         badges: checkBadges(xp),
-      });
+      };
+
+      setCurrentUser(hydratedUser);
+      console.log("AuthProvider - user set:", hydratedUser);
     }
   }, []);
 
@@ -141,10 +145,28 @@ export const AuthProvider = ({ children }) => {
 
     saveUsers(updatedUsers);
 
-    setCurrentUser(updatedUser);
-    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+    const xp = updatedUser.xp || 0;
+    const level = calculateLevel(xp);
+    const badges = checkBadges(xp);
 
-    console.log("Onboarding complete! User:", updatedUser);
+    const fullyHydratedUser = {
+      ...updateUser,
+      level,
+      badges,
+    onboarded:true,
+
+};
+
+    localStorage.setItem("currentUser", JSON.stringify(fullyHydratedUser));
+    setCurrentUser(fullyHydratedUser);
+
+    console.log("Onboarding complete! User:", fullyHydratedUser);
+    console.log("Onboarded status:", fullyHydratedUser.onboarded);
+    console.log("Level:", fullyHydratedUser.level);
+    console.log("Badges:", fullyHydratedUser.badges);
+
+    const verifyUser = JSON.parse(localStorage.getItem("currentUser"));
+    console.log("Verified in localStorage:", verifyUser);
   };
 
   const getCourses = () => {
@@ -433,6 +455,22 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const refreshUser = () => {
+    const storedUser = localStorage.getItem("currentUser");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      const xp = parsedUser.xp || 0;
+      const hydratedUser = {
+        ...parsedUser,
+        level: calculateLevel(xp),
+        badges: checkBadges(xp),
+      };
+      setCurrentUser(hydratedUser);
+      console.log("AuthContext - manually refreshed user:", hydratedUser);
+    }
+  };
+
+
   return (
     <AuthContext.Provider
       value={{
@@ -450,6 +488,7 @@ export const AuthProvider = ({ children }) => {
         generateAndStoreLearningPath,
         completeLesson,
         updateStreak,
+        refreshUser,
       }}
     >
       {children}

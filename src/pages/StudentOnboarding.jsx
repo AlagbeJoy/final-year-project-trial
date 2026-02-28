@@ -3,17 +3,16 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function StudentOnboarding() {
-  const {completeOnboarding, currentUser, trackActivity} = useAuth();
-
-  if (currentUser?.onboarded) {
-    return <Navigate to="/studentdashboard" replace/>;
-  }
+  const { completeOnboarding, currentUser, trackActivity } = useAuth();
   const navigate = useNavigate();
-
   const [step, setStep] = useState(1);
   const totalSteps = 4;
-
   const [xp, setXp] = useState(0);
+  const [isFinishing, setIsFinishing] = useState(0);
+
+  if (!isFinishing && currentUser?.onboarded) {
+    return <Navigate to="/studentdashboard" replace />;
+  }
 
   const [formData, setFormData] = useState({
     matric: "",
@@ -21,20 +20,24 @@ function StudentOnboarding() {
     level: "",
     lessonStyle: "",
     motivation: [],
-    studyTime:"",
+    studyTime: "",
   });
 
   const handleChange = (e) => {
-    const {name, value} = e.target;
-    setFormData((prev) => ({...prev, [name]: value}));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRadioChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const toogleMotivation = (item) => {
     setFormData((prev) => ({
       ...prev,
       motivation: prev.motivation.includes(item)
-      ? prev.motivation.filter((m) => m !== item)
-      : [...prev.motivation, item],
+        ? prev.motivation.filter((m) => m !== item)
+        : [...prev.motivation, item],
     }));
   };
 
@@ -43,29 +46,49 @@ function StudentOnboarding() {
     setStep((prev) => prev + 1);
   };
 
-  const prevStep = () => setStep((prev) => prev -1);
+  const prevStep = () => setStep((prev) => prev - 1);
 
-const finish = () => {
-  console.log("Finishing onboarding with data:", formData);
-  console.log("XP earned:", xp);
+  const finish = () => {
+    console.log("Finishing onboarding with data:", formData);
+    console.log("XP earned:", xp);
 
-  completeOnboarding(formData, xp);
-  trackActivity("Completed Onboarding", 50, "onboarding");
+    setIsFinishing(true);
 
-  console.log("Onboarding functions called");
+    completeOnboarding(formData, xp);
+    trackActivity("Completed Onboarding", 50, "onboarding");
 
-  navigate("/redirect");
-};
+    console.log("Onboarding functions called");
+
+    setTimeout(() => {
+      const user = JSON.parse(localStorage.getItem("currentUser"));
+      if (user && !user.onboarded) {
+        console.log("Emergency fix: forcing onboarded to true");
+        user.onboarded = true;
+        localStorage.setItem("currentUser", JSON.stringify(user));
+      }
+      refreshUser();
+      navigate("/redirect");
+    }, 200);
+
+  };
 
   const progressWidth = `${(step / totalSteps) * 100}%`;
 
   const canProceedStep2 =
-  formData.matric &&
-  formData.department &&
-  formData.level;
+    formData.matric && formData.department && formData.level;
 
-  const canProceedStep3 =
-  formData.lessonStyle && formData.studyTime;
+  const canProceedStep3 = formData.lessonStyle && formData.studyTime;
+
+  if (isFinishing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow text-center">
+          <div className="w-16 h-16 border-4 border-[#5a6499] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Completing your setup...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -84,17 +107,16 @@ const finish = () => {
           />
         </div>
 
-        {/* STEP CONTENT */}
         {step === 1 && (
           <>
             <h2 className="text-2xl font-semibold mb-4 text-center">
-              Welcome {currentUser?.name.split(" ")[0]}👋{" "}
+              Welcome {currentUser?.name?.split(" ")[0]}👋
             </h2>
             <p className="text-center text-gray-600 mb-6">
               Your learning journey just got smarter and more interesting
             </p>
             <p className="text-center text-gray-600 mb-6">
-              Let’s set thing up - it would take less than 2 minutes{" "}
+              Let's set things up - it will take less than 2 minutes
             </p>
             <button
               onClick={nextStep}
@@ -118,6 +140,7 @@ const finish = () => {
                 name="matric"
                 type="text"
                 placeholder="Matric Number"
+                value={formData.matric}
                 className="w-full border p-3 rounded mb-3"
                 onChange={handleChange}
               />
@@ -126,31 +149,37 @@ const finish = () => {
                 name="department"
                 type="text"
                 placeholder="Department"
+                value={formData.department}
                 className="w-full border p-3 rounded mb-3"
                 onChange={handleChange}
               />
 
               <select
                 name="level"
+                value={formData.level}
                 className="w-full border p-3 rounded mb-6"
                 onChange={handleChange}
               >
                 <option value="">Select Level</option>
                 {[100, 200, 300, 400, 500, 600].map((lvl) => (
-                  <option key={lvl}>{lvl}</option>
+                  <option key={lvl} value={lvl}>
+                    {lvl}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="flex justify-between">
-              <button onClick={prevStep}>Back</button>
+              <button onClick={prevStep} className="px-6 py-2 rounded border">
+                Back
+              </button>
               <button
                 disabled={!canProceedStep2}
                 onClick={nextStep}
                 className={`px-6 py-2 rounded ${
                   canProceedStep2
                     ? "bg-[#5a6499] text-white"
-                    : "bg-gray-300 text-gray-500"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
                 Next (+10 XP)
@@ -166,43 +195,67 @@ const finish = () => {
             <p className="mb-2 font-medium">Lesson Style</p>
             <div className="space-y-2 mb-4">
               {["Short & Quick", "Detailed & Deep"].map((style) => (
-                <div
+                <label
                   key={style}
-                  onClick={() =>
-                    setFormData({ ...formData, lessonStyle: style })
-                  }
-                  className={`border p-2 rounded cursor-pointer ${
+                  className={`flex items-center border p-3 rounded cursor-pointer ${
                     formData.lessonStyle === style
                       ? "border-[#5a6499] bg-[#f4f5ff]"
-                      : ""
+                      : "border-gray-300"
                   }`}
                 >
-                  {style}
-                </div>
+                  <input
+                    type="radio"
+                    name="lessonStyle"
+                    value={style}
+                    checked={formData.lessonStyle === style}
+                    onChange={(e) =>
+                      handleRadioChange("lessonStyle", e.target.value)
+                    }
+                    className="mr-3 w-4 h-4 text-[#5a6499]"
+                  />
+                  <span>{style}</span>
+                </label>
               ))}
             </div>
 
             <p className="mb-2 font-medium">Best Study Time</p>
-            {["Morning", "Nignt", "Anytime"].map((time) => (
-              <div
-                key={time}
-                onClick={() => setFormData({ ...formData, studyTime: time })}
-                className={`border p-2 rounded cursor-pointer mb-2 ${
-                  formData.studyTime === time
-                    ? "border-[#5a6499] bg-[#f4f5ff]"
-                    : ""
-                }`}
-              >
-                {time}
-              </div>
-            ))}
+            <div className="space-y-2 mb-4">
+              {["Morning", "Night", "Anytime"].map((time) => (
+                <label
+                  key={time}
+                  className={`flex items-center border p-3 rounded cursor-pointer ${
+                    formData.studyTime === time
+                      ? "border-[#5a6499] bg-[#f4f5ff]"
+                      : "border-gray-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="studyTime"
+                    value={time}
+                    checked={formData.studyTime === time}
+                    onChange={(e) =>
+                      handleRadioChange("studyTime", e.target.value)
+                    }
+                    className="mr-3 w-4 h-4 text-[#5a6499]"
+                  />
+                  <span>{time}</span>
+                </label>
+              ))}
+            </div>
 
             <div className="flex justify-between mt-6">
-              <button onClick={prevStep}>Back</button>
+              <button onClick={prevStep} className="px-6 py-2 rounded border">
+                Back
+              </button>
               <button
                 disabled={!canProceedStep3}
                 onClick={nextStep}
-                className="bg-[#5a6499] text-white px-6 py-2 rounded"
+                className={`px-6 py-2 rounded ${
+                  canProceedStep3
+                    ? "bg-[#5a6499] text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               >
                 Next (+10 XP)
               </button>
@@ -213,7 +266,7 @@ const finish = () => {
         {step === 4 && (
           <>
             <h2 className="text-2xl font-semibold mb-4 text-center">
-              🎉 Welcome {currentUser.name.split(" ")[0]}!
+              🎉 Welcome {currentUser?.name?.split(" ")[0]}!
             </h2>
 
             <div className="text-center bg-yellow-100 p-4 rounded mb-4">
@@ -237,4 +290,4 @@ const finish = () => {
   );
 }
 
-export default StudentOnboarding
+export default StudentOnboarding;

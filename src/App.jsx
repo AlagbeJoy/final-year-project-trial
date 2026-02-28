@@ -37,6 +37,7 @@ import LecturerProfile from "./pages/LecturerProfile";
 import StudentActivity from "./pages/StudentActivity";
 import EditStudentProfile from "./components/EditStudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
+import CourseDetail from "./pages/CourseDetails";
 
 
 function App() {
@@ -123,6 +124,14 @@ function App() {
       </Route>
 
       <Route path="/redirect" element={<RoleRedirect />} />
+      <Route
+        path="/course/:courseId"
+        element={
+          <ProtectedRoute allowedRole="student">
+            <CourseDetail />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
