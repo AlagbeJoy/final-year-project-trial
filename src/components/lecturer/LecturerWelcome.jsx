@@ -1,15 +1,21 @@
-import React from 'react'
+import React from "react";
 
-function LecturerWelcome({user}) {
-    const firstName = user?.name?.split(" ")[0]
+function LecturerWelcome({ name }) {
+  // Get current time for greeting
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
   return (
-    <div className='bg-linear-to-r from-emerald-500 to-teal-600 text-white p-6 rounded-2xl shadow'>
-      <h1 className='text-2xl font-bold'>Welcome back, Lecturer {firstName} 👨‍🏫</h1>
-
-      <p className='opacity-90'>Here's your academic overview for today.</p>
+    <div className="bg-gradient-to-r from-[#5a6499] to-[#7c83b3] rounded-xl shadow-lg p-6 text-white">
+      <h1 className="text-2xl font-bold mb-2">
+        {greeting}, {name || "Lecturer"}! 👋
+      </h1>
+      <p className="opacity-90">
+        Here's what's happening with your courses today.
+      </p>
     </div>
   );
 }
 
-export default LecturerWelcome
+export default LecturerWelcome;

@@ -8,19 +8,39 @@ function StudentCourses() {
   const { currentUser, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [courses, setCourses] = useState([]);
+  const [allCourses, setAllCourses] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("all"); // 'all', 'sample', 'lecturer'
 
   useEffect(() => {
-    // Load courses from our sample data
-    setCourses(sampleCourses);
+    // Load sample courses
+    const samples = sampleCourses || [];
+
+    // Load lecturer-created courses from localStorage
+    const lecturerCourses = JSON.parse(
+      localStorage.getItem("lecturer_courses") || "[]",
+    );
+
+    // Combine both, marking the source
+    const combined = [
+      ...samples.map((c) => ({ ...c, source: "sample" })),
+      ...lecturerCourses.map((c) => ({ ...c, source: "lecturer" })),
+    ];
+
+    setAllCourses(combined);
   }, []);
 
   // Get enrolled courses from user profile
   const enrolledCourses = currentUser?.profile?.enrolledCourses || [];
 
-  const filteredCourses = courses.filter((course) =>
-    course.title.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Filter courses based on search and category
+  const filteredCourses = allCourses.filter((course) => {
+    const matchesSearch = course.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || course.source === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const enrollCourse = (course) => {
     // Check if already enrolled
@@ -35,10 +55,13 @@ function StudentCourses() {
       title: course.title,
       level: course.level,
       description: course.description,
+      instructor: course.instructor || "Course Instructor",
+      source: course.source,
       enrolledDate: new Date().toISOString(),
       progress: 0,
       completedLessons: [],
       completedQuizzes: [],
+      modules: course.modules || [], // Include modules for the course detail
     };
 
     const updatedCourses = [...enrolledCourses, courseToEnroll];
@@ -94,14 +117,28 @@ function StudentCourses() {
           </h2>
         </div>
 
-        <input
-          type="text"
-          placeholder="Search courses..."
-          className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-[#5a6499] focus:border-transparent"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        {/* Search and Filter */}
+        <div className="flex gap-4">
+          <input
+            type="text"
+            placeholder="Search courses..."
+            className="flex-1 border p-3 rounded-lg focus:ring-2 focus:ring-[#5a6499] focus:border-transparent"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="border p-3 rounded-lg focus:ring-2 focus:ring-[#5a6499]"
+          >
+            <option value="all">All Courses</option>
+            <option value="sample">Sample Courses</option>
+            <option value="lecturer">Lecturer Created</option>
+          </select>
+        </div>
+
+        {/* Course Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
             const isEnrolled = enrolledCourses.some((c) => c.id === course.id);
@@ -112,13 +149,22 @@ function StudentCourses() {
                 className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
               >
                 <img
-                  src={course.thumbnail}
+                  src={
+                    course.thumbnail || "https://via.placeholder.com/300x200"
+                  }
                   alt={course.title}
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold">{course.title}</h3>
+                    {course.source === "lecturer" && (
+                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                        👨‍🏫 Lecturer
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">
                     {course.description}
                   </p>
 
@@ -127,7 +173,7 @@ function StudentCourses() {
                       {course.level}
                     </span>
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                      {course.duration}
+                      {course.duration || "Self-paced"}
                     </span>
                   </div>
 
