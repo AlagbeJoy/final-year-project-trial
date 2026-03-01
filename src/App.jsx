@@ -37,8 +37,9 @@ import LecturerProfile from "./pages/LecturerProfile";
 import StudentActivity from "./pages/StudentActivity";
 import EditStudentProfile from "./components/EditStudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
-import CourseDetail from "./pages/CourseDetails";
 import LecturerCreateCourse from "./pages/LecturerCreateCourse";
+import LecturerCourses from "./pages/LecturerCourses";
+import LecturerAnalytics from "./pages/LecturerAnalytics";
 
 
 function App() {
@@ -105,7 +106,6 @@ function App() {
           element={<StudentDashboardBasic />}
         />
         <Route path="/studentcourses" element={<StudentCourses />} />
-        <Route path="/student/courses/:id" element={<CourseDetails />} />
         <Route path="/studentactivity" element={<StudentActivity />} />
         <Route path="/profile" element={<StudentProfile />} />
         <Route path="/editstudentprofile" element={<EditStudentProfile />} />
@@ -135,7 +135,7 @@ function App() {
         path="/course/:courseId"
         element={
           <ProtectedRoute allowedRole="student">
-            <CourseDetail />
+            <CourseDetails />
           </ProtectedRoute>
         }
       />
