@@ -66,9 +66,14 @@ function StudentOnboarding() {
         user.onboarded = true;
         localStorage.setItem("currentUser", JSON.stringify(user));
       }
+
+      if (typeof refreshUser === "function") {
+        refreshUser();
+      }
+
       refreshUser();
       navigate("/redirect");
-    }, 200);
+    }, 500);
 
   };
 

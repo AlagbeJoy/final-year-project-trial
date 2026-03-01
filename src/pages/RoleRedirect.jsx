@@ -24,11 +24,12 @@ function RoleRedirect() {
     }
 
     if (
-      storedUser?.onboarded === true &&
-      (!currentUser || !currentUser.onboarded)
+      storedUser?.onboarded === true && (!currentUser || !currentUser.onboarded)
     ) {
       console.log("Refreshing context to get onboarded=true");
+        if (typeof refreshUser === 'function') {
       refreshUser();
+        }
 
       // Wait for context to update
       const timer = setTimeout(() => {

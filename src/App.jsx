@@ -40,6 +40,7 @@ import ForgotPassword from "./components/ForgotPassword";
 import LecturerCreateCourse from "./pages/LecturerCreateCourse";
 import LecturerCourses from "./pages/LecturerCourses";
 import LecturerAnalytics from "./pages/LecturerAnalytics";
+import EditLecturerProfile from "./components/EditLecturerProfile";
 
 
 function App() {
@@ -139,6 +140,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/editlecturerprofile" element={<EditLecturerProfile />} />
     </Routes>
   );
 }
