@@ -38,6 +38,7 @@ import StudentActivity from "./pages/StudentActivity";
 import EditStudentProfile from "./components/EditStudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
 import CourseDetail from "./pages/CourseDetails";
+import LecturerCreateCourse from "./pages/LecturerCreateCourse";
 
 
 function App() {
@@ -113,7 +114,13 @@ function App() {
 
       <Route element={<ProtectedRoute allowedRole="lecturer" />}>
         <Route path="/lecturerdashboard" element={<LecturerDashboard />} />
-        <Route path="/lecturerprofile" element={<LecturerProfile />} />
+        <Route
+          path="/lecturer/create-course"
+          element={<LecturerCreateCourse />}
+        />
+        <Route path="/lecturer/courses" element={<LecturerCourses />} />
+        <Route path="/lecturer/analytics" element={<LecturerAnalytics />} />
+        <Route path="/lecturer/profile" element={<LecturerProfile />} />
         <Route path="/createquiz" element={<CreateQuiz />} />
         <Route path="/upload" element={<UploadMaterials />} />
       </Route>
