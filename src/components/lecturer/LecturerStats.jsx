@@ -43,25 +43,21 @@ function LecturerStats() {
       label: "Total Courses",
       value: stats.totalCourses,
       icon: "📚",
-      color: "bg-blue-500",
     },
     {
       label: "Active Students",
       value: stats.totalStudents,
       icon: "👥",
-      color: "bg-green-500",
     },
     {
       label: "Materials",
       value: stats.totalMaterials,
       icon: "📄",
-      color: "bg-purple-500",
     },
     {
       label: "Quizzes",
       value: stats.totalQuizzes,
       icon: "📝",
-      color: "bg-yellow-500",
     },
   ];
 
@@ -74,7 +70,6 @@ function LecturerStats() {
         >
           <div className="flex items-center justify-between mb-4">
             <span className="text-3xl">{stat.icon}</span>
-            <span className={`${stat.color} w-2 h-2 rounded-full`}></span>
           </div>
           <p className="text-gray-500 text-sm mb-1">{stat.label}</p>
           <p className="text-3xl font-bold text-gray-800">{stat.value}</p>
