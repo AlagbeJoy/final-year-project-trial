@@ -3,7 +3,8 @@ import StudentSidebar from "../components/StudentSidebar";
 import Leaderboard from "../components/leaderboard/Leaderboard";
 
 function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState("global");
+  const [timeframe, setTimeframe] = useState("allTime");
+  const [category, setCategory] = useState("global");
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -17,42 +18,33 @@ function LeaderboardPage() {
           </p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b mb-6">
-          <button
-            onClick={() => setActiveTab("global")}
-            className={`px-6 py-3 font-medium transition ${
-              activeTab === "global"
-                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Global Rankings
-          </button>
-          <button
-            onClick={() => setActiveTab("courses")}
-            className={`px-6 py-3 font-medium transition ${
-              activeTab === "courses"
-                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Course Rankings
-          </button>
-          <button
-            onClick={() => setActiveTab("department")}
-            className={`px-6 py-3 font-medium transition ${
-              activeTab === "department"
-                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Department Rankings
-          </button>
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+          <div className="flex flex-wrap gap-4">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="border p-2 rounded-lg"
+            >
+              <option value="global">Global Rankings</option>
+              <option value="course">Course Rankings</option>
+              <option value="department">Department Rankings</option>
+            </select>
+
+            <select
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value)}
+              className="border p-2 rounded-lg"
+            >
+              <option value="weekly">This Week</option>
+              <option value="monthly">This Month</option>
+              <option value="allTime">All Time</option>
+            </select>
+          </div>
         </div>
 
-        {/* Leaderboard Content */}
-        <Leaderboard type={activeTab} />
+        {/* Leaderboard */}
+        <Leaderboard type={category} timeframe={timeframe} />
       </main>
     </div>
   );

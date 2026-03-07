@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { generateLearningPath } from "../engine/learningPathEngine";
+import badgeService from "../services/badgeService";
 
 const AuthContext = createContext();
 
@@ -260,7 +261,7 @@ export const AuthProvider = ({ children }) => {
       date: new Date().toISOString(),
     };
 
-    const updatedUser = {
+    let updatedUser = {
       ...currentUser,
       xp: newXP,
       level: newLevel,
@@ -268,14 +269,20 @@ export const AuthProvider = ({ children }) => {
       activities: [newActivity, ...(currentUser.activities || [])],
     };
 
+    const newEarnedBadges = badgeService.checkNewBadges(updatedUser);
+    if (newEarnedBadges.length > 0) {
+      updatedUser = badgeService.awardBadges(updatedUser, newEarnedBadges);
+    }
+
     const updatedUsers = users.map((u) =>
       u.email === currentUser.email ? updatedUser : u,
     );
 
     saveUsers(updatedUsers);
-
     setCurrentUser(updatedUser);
     localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+    return newEarnedBadges;
   };
 
   const updateProfile = (profileData) => {
@@ -305,9 +312,21 @@ export const AuthProvider = ({ children }) => {
       u.email === userData.email ? userData : u,
     );
 
+     const newBadges = badgeService.checkNewBadges(userData);
+  let updatedUserData = userData;
+  
+  if (newBadges.length > 0) {
+    updatedUserData = badgeService.awardBadges(userData, newBadges);
+
+    console.log("New badges earned:", newBadges);
+  }
+
     saveUsers(updatedUsers);
     setCurrentUser(userData);
-    localStorage.setItem("currentUser", JSON.stringify(userData));
+    localStorage.setItem("currentUser", JSON.stringify(updatedUserData));
+
+      return updatedUserData;
+
   };
 
   const generateAndStoreLearningPath = () => {

@@ -44,7 +44,8 @@ import EditLecturerProfile from "./components/EditLecturerProfile";
 import LearningPath from "./components/adaptive/LearningPath";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import FeatureTestPage from "./pages/FeatureTestPage";
-
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminRoute from "./components/AdminRoute";
 
 function App() {
   return (
@@ -68,7 +69,6 @@ function App() {
         }
       ></Route>
       <Route path="/forgotpassword" element={<ForgotPassword />} />
-
       <Route
         path="/studentonboarding"
         element={
@@ -102,7 +102,6 @@ function App() {
       <Route path="/mycoursesbasic" element={<MyCoursesBasic />}></Route>
       <Route path="/student/courses/:id" element={<CourseDetails />}></Route>
       <Route path="/protectedroute" element={<ProtectedRoute />}></Route>
-
       <Route element={<ProtectedRoute allowedRole="student" />}>
         <Route path="/studentdashboard" element={<StudentDashboard />} />
         <Route
@@ -115,7 +114,6 @@ function App() {
         <Route path="/editstudentprofile" element={<EditStudentProfile />} />
         <Route path="/progress" element={<StudentProgress />} />
       </Route>
-
       <Route element={<ProtectedRoute allowedRole="lecturer" />}>
         <Route path="/lecturerdashboard" element={<LecturerDashboard />} />
         <Route
@@ -128,12 +126,10 @@ function App() {
         <Route path="/createquiz" element={<CreateQuiz />} />
         <Route path="/upload" element={<UploadMaterials />} />
       </Route>
-
       <Route element={<ProtectedRoute />}>
         <Route path="/settings" element={<Settings />} />
         <Route path="/gamification" element={<Gamification />} />
       </Route>
-
       <Route path="/redirect" element={<RoleRedirect />} />
       <Route
         path="/course/:courseId"
@@ -145,8 +141,24 @@ function App() {
       />
       <Route path="/editlecturerprofile" element={<EditLecturerProfile />} />
       <Route path="/learningpath" element={<LearningPath />} />
-      <Route path="/leaderboard" element={<LeaderboardPage />} />
+      <Route
+        path="/leaderboard"
+        element={
+          <ProtectedRoute allowedRole="student">
+            <LeaderboardPage />
+          </ProtectedRoute>
+        }
+      />{" "}
       <Route path="/test-features" element={<FeatureTestPage />} />
+      // Add admin routes
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        }
+      />
     </Routes>
   );
 }

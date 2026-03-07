@@ -1,17 +1,7 @@
-import React from "react";
-import ModuleBuilder from "./ModuleBuilder"; // This is correct if in same folder
-import LessonEditor from "./LessonEditor"; // This is correct if in same folder
-import QuizBuilder from "./QuizBuilder"; // This is correct if in same folder
-
-const [prerequisites, setPrerequisites] = useState(
-  courseData.prerequisites || {
-    requiredCourses: [],
-    requiredXP: 0,
-    requiredLevel: 1,
-    requiredSkills: [],
-    description: "",
-  },
-);
+import React, { useState } from "react";
+import ModuleBuilder from "./ModuleBuilder";
+import LessonEditor from "./LessonEditor";
+import QuizBuilder from "./QuizBuilder";
 
 function CourseBuilder({
   activeTab,
@@ -20,6 +10,24 @@ function CourseBuilder({
   saveCourse,
 }) {
   console.log("CourseBuilder rendered with tab:", activeTab);
+
+  // Move useState inside the component
+  const [prerequisites, setPrerequisites] = useState(
+    courseData.prerequisites || {
+      requiredCourses: [],
+      requiredXP: 0,
+      requiredLevel: 1,
+      requiredSkills: [],
+      description: "",
+    },
+  );
+
+  // Update parent when prerequisites change
+  const handlePrerequisiteChange = (updates) => {
+    const updatedPrereqs = { ...prerequisites, ...updates };
+    setPrerequisites(updatedPrereqs);
+    updateCourseData({ prerequisites: updatedPrereqs });
+  };
 
   if (activeTab === "basic") {
     return (
@@ -85,6 +93,7 @@ function CourseBuilder({
           />
         </div>
 
+        {/* Prerequisites Section */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="font-semibold mb-3">Prerequisites (Optional)</h3>
 
@@ -97,13 +106,13 @@ function CourseBuilder({
                 type="number"
                 value={prerequisites.requiredXP}
                 onChange={(e) =>
-                  setPrerequisites({
-                    ...prerequisites,
-                    requiredXP: parseInt(e.target.value),
+                  handlePrerequisiteChange({
+                    requiredXP: parseInt(e.target.value) || 0,
                   })
                 }
                 className="w-full border p-2 rounded"
                 placeholder="0"
+                min="0"
               />
             </div>
 
@@ -115,9 +124,8 @@ function CourseBuilder({
                 type="number"
                 value={prerequisites.requiredLevel}
                 onChange={(e) =>
-                  setPrerequisites({
-                    ...prerequisites,
-                    requiredLevel: parseInt(e.target.value),
+                  handlePrerequisiteChange({
+                    requiredLevel: parseInt(e.target.value) || 1,
                   })
                 }
                 className="w-full border p-2 rounded"
@@ -129,14 +137,28 @@ function CourseBuilder({
 
           <div className="mb-3">
             <label className="block text-sm text-gray-600 mb-1">
+              Required Courses (Coming Soon)
+            </label>
+            <input
+              type="text"
+              disabled
+              className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
+              placeholder="Course prerequisites coming in next update"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Select specific courses that must be completed first
+            </p>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-sm text-gray-600 mb-1">
               Required Skills (comma separated)
             </label>
             <input
               type="text"
               value={prerequisites.requiredSkills.join(", ")}
               onChange={(e) =>
-                setPrerequisites({
-                  ...prerequisites,
+                handlePrerequisiteChange({
                   requiredSkills: e.target.value
                     .split(",")
                     .map((s) => s.trim())
@@ -155,8 +177,7 @@ function CourseBuilder({
             <textarea
               value={prerequisites.description}
               onChange={(e) =>
-                setPrerequisites({
-                  ...prerequisites,
+                handlePrerequisiteChange({
                   description: e.target.value,
                 })
               }
@@ -174,9 +195,9 @@ function CourseBuilder({
                 alert("Please fill in all required fields");
                 return;
               }
-
-              if (window.confirm("Move to modules tab?")) {
-              }
+              // You need to pass a function to change tabs from parent
+              // For now, we'll just log
+              console.log("Moving to modules tab...");
             }}
             className="bg-[#5a6499] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4a5499] transition"
           >
@@ -238,6 +259,31 @@ function CourseBuilder({
               {courseData.modules?.length || 0}
             </span>
           </div>
+
+          {/* Show prerequisites summary */}
+          {prerequisites.description && (
+            <div className="mt-4 pt-4 border-t">
+              <span className="text-gray-600">Prerequisites:</span>{" "}
+              <p className="text-sm text-gray-700 mt-1">
+                {prerequisites.description}
+              </p>
+              {prerequisites.requiredXP > 0 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  • Minimum {prerequisites.requiredXP} XP required
+                </p>
+              )}
+              {prerequisites.requiredLevel > 1 && (
+                <p className="text-sm text-gray-600">
+                  • Minimum Level {prerequisites.requiredLevel}
+                </p>
+              )}
+              {prerequisites.requiredSkills.length > 0 && (
+                <p className="text-sm text-gray-600">
+                  • Skills: {prerequisites.requiredSkills.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-4">

@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import StudentSidebar from "../components/StudentSidebar";
 import { useNavigate } from "react-router-dom";
 import { avatars } from "../components/AvatarSelector";
+import BadgeGallery from "../components/badges/BadgeGallery";
 
 function StudentProfile() {
   const { currentUser } = useAuth();
@@ -109,6 +110,10 @@ function StudentProfile() {
                 {currentUser.streak || 0} days
               </p>
             </div>
+          </div>
+
+          <div className="mt-8">
+            <BadgeGallery />
           </div>
 
           {/* Profile Information Grid */}
