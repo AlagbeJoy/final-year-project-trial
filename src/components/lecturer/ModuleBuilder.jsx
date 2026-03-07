@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import LessonEditor from "./LessonEditor";
 import QuizBuilder from "./QuizBuilder";
+import BulkUploader from "./BulkUploader";
+import FileManager from "./FileManager";
+
 
 function ModuleBuilder({ modules, updateModules }) {
   const [expandedModule, setExpandedModule] = useState(null);
@@ -34,6 +37,25 @@ function ModuleBuilder({ modules, updateModules }) {
       updateModules(modules.filter((m) => m.id !== moduleId));
       if (expandedModule === moduleId) setExpandedModule(null);
     }
+
+const handleBulkUpload = (uploadedFiles) => {
+  const newLessons = uploadedFiles.map((file, index) => ({
+    id: Date.now() + index,
+    title: file.name,
+    type: file.type.includes("video") ? "video" : "reading",
+    content: file.url,
+    duration: "Auto",
+    xpReward: 10,
+    completed: false,
+  }));
+
+  updateModule(module.id, {
+    lessons: [...(module.lessons || []), ...newLessons],
+  });
+};
+
+    const [showFileManager, setShowFileManager] = useState(false);
+
   };
 
   return (
@@ -100,6 +122,13 @@ function ModuleBuilder({ modules, updateModules }) {
                   className="w-full border p-2 rounded"
                   placeholder="Describe what this module covers..."
                 />
+                <div className="mb-4">
+                  <h4 className="font-medium mb-2">📤 Bulk Upload Materials</h4>
+                  <BulkUploader
+                    onUploadComplete={handleBulkUpload}
+                    acceptedFileTypes={[".pdf", ".mp4", ".jpg", ".png"]}
+                  />
+                </div>
               </div>
 
               {/* Lessons Section */}
@@ -110,6 +139,29 @@ function ModuleBuilder({ modules, updateModules }) {
                   moduleId={module.id}
                   updateModule={updateModule}
                 />
+              </div>
+
+              <div className="mt-4 pt-4 border-t">
+                <button
+                  onClick={() => setShowFileManager(!showFileManager)}
+                  className="text-[#5a6499] hover:text-[#4a5499] font-medium flex items-center gap-2"
+                >
+                  <span>{showFileManager ? "▼" : "▶"}</span>
+                  📁 Course Materials
+                </button>
+
+                {showFileManager && (
+                  <div className="mt-4">
+                    <FileManager
+                      courseId={courseData.id}
+                      moduleId={module.id}
+                      onFilesUpdate={(files) => {
+                        // Optionally update module with file references
+                        updateModule(module.id, { materials: files });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Quiz Section */}

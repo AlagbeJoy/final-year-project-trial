@@ -3,6 +3,16 @@ import ModuleBuilder from "./ModuleBuilder"; // This is correct if in same folde
 import LessonEditor from "./LessonEditor"; // This is correct if in same folder
 import QuizBuilder from "./QuizBuilder"; // This is correct if in same folder
 
+const [prerequisites, setPrerequisites] = useState(
+  courseData.prerequisites || {
+    requiredCourses: [],
+    requiredXP: 0,
+    requiredLevel: 1,
+    requiredSkills: [],
+    description: "",
+  },
+);
+
 function CourseBuilder({
   activeTab,
   courseData,
@@ -75,6 +85,88 @@ function CourseBuilder({
           />
         </div>
 
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="font-semibold mb-3">Prerequisites (Optional)</h3>
+
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                Minimum XP Required
+              </label>
+              <input
+                type="number"
+                value={prerequisites.requiredXP}
+                onChange={(e) =>
+                  setPrerequisites({
+                    ...prerequisites,
+                    requiredXP: parseInt(e.target.value),
+                  })
+                }
+                className="w-full border p-2 rounded"
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                Minimum Level Required
+              </label>
+              <input
+                type="number"
+                value={prerequisites.requiredLevel}
+                onChange={(e) =>
+                  setPrerequisites({
+                    ...prerequisites,
+                    requiredLevel: parseInt(e.target.value),
+                  })
+                }
+                className="w-full border p-2 rounded"
+                placeholder="1"
+                min="1"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-sm text-gray-600 mb-1">
+              Required Skills (comma separated)
+            </label>
+            <input
+              type="text"
+              value={prerequisites.requiredSkills.join(", ")}
+              onChange={(e) =>
+                setPrerequisites({
+                  ...prerequisites,
+                  requiredSkills: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s),
+                })
+              }
+              className="w-full border p-2 rounded"
+              placeholder="JavaScript, React, HTML"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">
+              Prerequisite Description
+            </label>
+            <textarea
+              value={prerequisites.description}
+              onChange={(e) =>
+                setPrerequisites({
+                  ...prerequisites,
+                  description: e.target.value,
+                })
+              }
+              className="w-full border p-2 rounded"
+              placeholder="e.g., Students should have basic programming knowledge..."
+              rows="2"
+            />
+          </div>
+        </div>
+
         <div className="flex justify-end">
           <button
             onClick={() => {
@@ -82,9 +174,8 @@ function CourseBuilder({
                 alert("Please fill in all required fields");
                 return;
               }
-           
+
               if (window.confirm("Move to modules tab?")) {
-               
               }
             }}
             className="bg-[#5a6499] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4a5499] transition"

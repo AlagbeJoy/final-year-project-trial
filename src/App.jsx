@@ -41,6 +41,9 @@ import LecturerCreateCourse from "./pages/LecturerCreateCourse";
 import LecturerCourses from "./pages/LecturerCourses";
 import LecturerAnalytics from "./pages/LecturerAnalytics";
 import EditLecturerProfile from "./components/EditLecturerProfile";
+import LearningPath from "./components/adaptive/LearningPath";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import FeatureTestPage from "./pages/FeatureTestPage";
 
 
 function App() {
@@ -141,6 +144,9 @@ function App() {
         }
       />
       <Route path="/editlecturerprofile" element={<EditLecturerProfile />} />
+      <Route path="/learningpath" element={<LearningPath />} />
+      <Route path="/leaderboard" element={<LeaderboardPage />} />
+      <Route path="/test-features" element={<FeatureTestPage />} />
     </Routes>
   );
 }

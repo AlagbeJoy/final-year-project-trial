@@ -9,6 +9,9 @@ import StudentAchievements from "../components/student/StudentAchievements";
 import StudentRecentActivity from "../components/student/StudentRecentActivity";
 import ContinueLearning from "../components/ContinueLearning";
 import EmptyStateCard from "../components/EmptyStateCard";
+import LearningPath from "../components/adaptive/LearningPath";
+import Leaderboard from "../components/leaderboard/Leaderboard";
+
 
 function StudentDashboard() {
   const { currentUser, updateStreak } = useAuth();
@@ -71,18 +74,19 @@ function StudentDashboard() {
       <StudentSidebar />
 
       <main className="flex-1 px-6 py-6 space-y-6">
-        {/* Welcome Section */}
         <StudentWelcome user={currentUser} />
 
-        {/* Stats Grid */}
         <StudentStats user={currentUser} />
 
-        {/* Quick Actions */}
+        {!isNewUser && (
+          <div className="mt-8">
+            <LearningPath />
+          </div>
+        )}
+
         <StudentQuickActions />
 
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Progress */}
           <div className="lg:col-span-2 space-y-6">
             <StudentProgress user={currentUser} />
 
@@ -100,10 +104,10 @@ function StudentDashboard() {
             )}
           </div>
 
-          {/* Right Column - Achievements & Activity */}
           <div className="space-y-6">
             <StudentAchievements user={currentUser} />
             <StudentRecentActivity activities={currentUser.activities} />
+            <Leaderboard />
           </div>
         </div>
       </main>

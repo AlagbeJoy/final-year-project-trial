@@ -9,6 +9,7 @@ function StudentSidebar() {
   const menuItems = [
     { path: "/studentdashboard", icon: "📊", label: "Dashboard" },
     { path: "/studentcourses", icon: "📚", label: "My Courses" },
+    { path: "/leaderboard", icon: "🏆", label: "Leaderboard" },
     { path: "/studentactivity", icon: "📈", label: "Activity" },
     { path: "/profile", icon: "👤", label: "Profile" },
     { path: "/progress", icon: "🎯", label: "Progress" },
