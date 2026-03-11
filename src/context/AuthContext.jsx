@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { generateLearningPath } from "../engine/learningPathEngine";
 import badgeService from "../services/badgeService";
+import api from "../services/api";
 
 const AuthContext = createContext();
 
@@ -36,33 +37,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("users", JSON.stringify(users));
   };
 
-  const register = (name, email, password, role) => {
-    const users = getUsers();
+  const register = async (name, email, password, role) => {
+    try {
+      const response = await api.register({ name, email, password, role });
 
-    const userExists = users.find((u) => u.email === email);
-    if (userExists) {
-      return { success: false, message: "User already exists" };
+      // Save to localStorage as backup
+      localStorage.setItem("currentUser", JSON.stringify(response.user));
+      localStorage.setItem("token", response.token);
+
+      setCurrentUser(response.user);
+      return { success: true };
+    } catch (error) {
+      console.error("Registration error:", error);
+      return {
+        success: false,
+        message: error.message || "Registration failed",
+      };
     }
-
-    const newUser = {
-      name: name.trim(),
-      email: email.trim(),
-      password: password.trim(),
-      role,
-      onboarded: false,
-      xp: 0,
-      activities: [],
-      badges: [],
-      learningPath: [],
-    };
-
-    users.push(newUser);
-    saveUsers(users);
-
-    setCurrentUser(newUser);
-    localStorage.setItem("currentUser", JSON.stringify(newUser));
-
-    return { success: true };
   };
 
   const login = (email, password) => {
