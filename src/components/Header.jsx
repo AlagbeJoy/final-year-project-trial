@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import study from "../assets/Images/study.jpg";
 import study2 from "../assets/Images/study2.jpg"
-import study3 from "../assets/Images/study3.jpg"
+// import study3 from "../assets/Images/study3.jpg"
 
 import { useNavigate } from "react-router-dom";
 
 function Header() {
   const navigate = useNavigate();
-  const slides = [study, study2, study3];
+  const slides = [study, study2];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
