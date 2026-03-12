@@ -3,6 +3,9 @@ import { generateLearningPath } from "../engine/learningPathEngine";
 import badgeService from "../services/badgeService";
 import api from "../services/api";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api";
+console.log("🔧 API_URL is:", API_URL);
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -37,129 +40,112 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("users", JSON.stringify(users));
   };
 
-  const register = async (name, email, password, role) => {
-    try {
-      const response = await api.register({ name, email, password, role });
+ const register = async (name, email, password, role) => {
+   try {
+     console.log("📝 Registering user:", { name, email, role });
 
-      // Save to localStorage as backup
-      localStorage.setItem("currentUser", JSON.stringify(response.user));
-      localStorage.setItem("token", response.token);
+     const response = await fetch(`${API_URL}/auth/register`, {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+       },
+       body: JSON.stringify({ name, email, password, role }),
+     });
 
-      setCurrentUser(response.user);
-      return { success: true };
-    } catch (error) {
-      console.error("Registration error:", error);
+     const data = await response.json();
+
+     if (!response.ok) {
+       throw new Error(data.message || "Registration failed");
+     }
+
+     console.log("✅ Registration successful:", data);
+
+     localStorage.setItem("currentUser", JSON.stringify(data.user));
+     localStorage.setItem("token", data.token);
+     setCurrentUser(data.user);
+
+     return { success: true, user: data.user };
+   } catch (error) {
+     console.error("❌ Registration error:", error);
+     return { success: false, message: error.message };
+   }
+ };
+
+const login = async (email, password) => {
+  try {
+    console.log("🔐 Login attempt:", email);
+
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
       return {
         success: false,
-        message: error.message || "Registration failed",
+        message: data.message || "Invalid email or password",
       };
     }
-  };
 
-  const login = (email, password) => {
-    const users = getUsers();
-    // JSON.parse(localStorage.getItem("users")) || [];
+    console.log("✅ Login successful:", data);
 
-    console.log("LOGIN ATTEMPT:", email, password);
-    console.log("STORED USERS:", users);
+    localStorage.setItem("currentUser", JSON.stringify(data.user));
+    localStorage.setItem("token", data.token);
+    setCurrentUser(data.user);
 
-    const existingUser = users.find(
-      (u) =>
-        u.email.trim() === email.trim() &&
-        u.password.trim() === password.trim(),
-    );
-
-    if (!existingUser) {
-      return { success: false, message: "Invalid email or password" };
-    }
-
-    // if (existingUser.password !== password) {
-    //     return{
-    //         success: false, message: "Incorrect password",
-    //     };
-    // }
-
-    const xp = existingUser.xp || 0;
-
-    const hydratedUser = {
-      ...existingUser,
-      xp,
-      level: calculateLevel(xp),
-      badges: checkBadges(xp),
-    };
-    setCurrentUser(hydratedUser);
-    localStorage.setItem("currentUser", JSON.stringify(hydratedUser));
-
-    return { success: true };
-  };
-
-  const completeOnboarding = (onboardingData, xpEarned) => {
-    const users = getUsers();
-
-    const recommendedCourses = generateLearningPath({
-      ...currentUser,
-      profile: onboardingData,
-    });
-
-    let updatedUser = null;
-
-    const updatedUsers = users.map((u) => {
-      if (u.email === currentUser.email) {
-        updatedUser = {
-          ...u,
-          onboarded: true,
-          profile: {
-            name: u.name,
-            ...onboardingData,
-            enrolledCourses: [],
-          },
-          learningPath: recommendedCourses,
-          xp: (u.xp || 0) + (xpEarned || 0) + 20,
-          activities: [
-            {
-              type: "onboarding",
-              message: "Completed profile onboarding",
-              xp: 20,
-              date: new Date().toISOString(),
-            },
-            ...(u.activities || []),
-          ],
-        };
-        return updatedUser;
-      }
-      return u;
-    });
-
-    if (!updatedUser) {
-      console.error("User not found in users array");
-      return;
-    }
-
-    saveUsers(updatedUsers);
-
-    const xp = updatedUser.xp || 0;
-    const level = calculateLevel(xp);
-    const badges = checkBadges(xp);
-
-    const fullyHydratedUser = {
-      ...updateUser,
-      level,
-      badges,
-    onboarded:true,
-
+    return { success: true, user: data.user };
+  } catch (error) {
+    console.error("❌ Login error:", error);
+    return { success: false, message: "Login failed. Please try again." };
+  }
 };
 
-    localStorage.setItem("currentUser", JSON.stringify(fullyHydratedUser));
-    setCurrentUser(fullyHydratedUser);
+ const completeOnboarding = async (onboardingData, xpEarned) => {
+   try {
+     console.log("📝 Completing onboarding:", onboardingData);
+     console.log("🔧 API_URL being used:", API_URL);
+     console.log("🔑 Token exists:", !!localStorage.getItem("token"));
 
-    console.log("Onboarding complete! User:", fullyHydratedUser);
-    console.log("Onboarded status:", fullyHydratedUser.onboarded);
-    console.log("Level:", fullyHydratedUser.level);
-    console.log("Badges:", fullyHydratedUser.badges);
+     const token = localStorage.getItem("token");
+     const url = `${API_URL}/users/onboarding`;
+     console.log("📡 Fetching URL:", url);
 
-    const verifyUser = JSON.parse(localStorage.getItem("currentUser"));
-    console.log("Verified in localStorage:", verifyUser);
-  };
+     const response = await fetch(url, {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+         Authorization: `Bearer ${token}`,
+       },
+       body: JSON.stringify({ onboardingData, xpEarned }),
+     });
+
+     console.log("📥 Response status:", response.status);
+
+     const data = await response.json();
+     console.log("📦 Response data:", data);
+
+     if (!response.ok) {
+       throw new Error(data.message || "Onboarding failed");
+     }
+
+     console.log("✅ Onboarding successful:", data);
+
+     setCurrentUser(data.user);
+     localStorage.setItem("currentUser", JSON.stringify(data.user));
+
+     return { success: true };
+   } catch (error) {
+     console.error("❌ Onboarding error:", error);
+     console.error("❌ Error name:", error.name);
+     console.error("❌ Error message:", error.message);
+     return { success: false, message: error.message };
+   }
+ };
 
   const getCourses = () => {
     const courses = localStorage.getItem("courses");

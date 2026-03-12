@@ -71,7 +71,7 @@ function StudentOnboarding() {
         refreshUser();
       }
 
-      refreshUser();
+      // refreshUser();
       navigate("/redirect");
     }, 500);
 

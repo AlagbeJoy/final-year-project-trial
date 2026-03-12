@@ -56,24 +56,36 @@ function CreateAccountpage() {
 
       };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validate()) return;
 
-    const result = register(
-      formData.name,
-      formData.email,
-      formData.password,
-      formData.role
-    );
+    try {
+      const result = await register(
+        formData.name,
+        formData.email,
+        formData.password,
+        formData.role,
+      );
 
-    if (!result.success) {
-      setErrors({email: result.message});
-      return;
+      if (result.success) {
+        console.log("✅ Registration successful, redirecting...");
+        // Navigate based on role
+        if (formData.role === "student") {
+          navigate("/studentonboarding");
+        } else if (formData.role === "lecturer") {
+          navigate("/lectureronboarding");
+        } else {
+          navigate("/redirect");
+        }
+      } else {
+        setErrors({ email: result.message });
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      setErrors({ general: "Registration failed. Please try again." });
     }
-
-    navigate("/redirect");
   };
 
   return (
