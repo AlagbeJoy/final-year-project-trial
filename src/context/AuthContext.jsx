@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }) => {
 const login = async (email, password) => {
   try {
     console.log("🔐 Login attempt:", email);
+     console.log("📤 Sending password:", password);
 
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -109,19 +110,28 @@ const login = async (email, password) => {
    try {
      console.log("📝 Completing onboarding:", onboardingData);
      console.log("🔧 API_URL being used:", API_URL);
-     console.log("🔑 Token exists:", !!localStorage.getItem("token"));
 
      const token = localStorage.getItem("token");
+     const currentUserData = JSON.parse(localStorage.getItem("currentUser"));
+
+     console.log("👤 Current user email:", currentUserData?.email);
+     console.log("🔑 Token exists:", !!token);
+
      const url = `${API_URL}/users/onboarding`;
      console.log("📡 Fetching URL:", url);
 
+     // IMPORTANT: Include the email in the request body
      const response = await fetch(url, {
        method: "POST",
        headers: {
          "Content-Type": "application/json",
          Authorization: `Bearer ${token}`,
        },
-       body: JSON.stringify({ onboardingData, xpEarned }),
+       body: JSON.stringify({
+         email: currentUserData?.email, // ← ADD THIS LINE
+         onboardingData,
+         xpEarned,
+       }),
      });
 
      console.log("📥 Response status:", response.status);
@@ -141,8 +151,6 @@ const login = async (email, password) => {
      return { success: true };
    } catch (error) {
      console.error("❌ Onboarding error:", error);
-     console.error("❌ Error name:", error.name);
-     console.error("❌ Error message:", error.message);
      return { success: false, message: error.message };
    }
  };

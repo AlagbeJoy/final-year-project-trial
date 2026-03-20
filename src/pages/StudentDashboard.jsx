@@ -16,6 +16,7 @@ import BadgeGallery from "../components/badges/BadgeGallery"; // Add this missin
 
 function StudentDashboard() {
   const { currentUser, updateStreak } = useAuth();
+  console.log("👤 Current user data:", currentUser); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const hasUpdatedStreak = useRef(false);

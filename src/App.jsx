@@ -95,6 +95,10 @@ function App() {
         path="/leaderboardpreview"
         element={<LeaderboardPreview />}
       ></Route>
+      <Route
+        path="/lecturer/edit-course/:courseId"
+        element={<LecturerCreateCourse />}
+      />
       <Route path="/courses" element={<MyCourses />}></Route>
       <Route path="/welcomebasic" element={<WelcomeBasic />}></Route>
       <Route path="/recentactivity" element={<RecentActivity />}></Route>
@@ -121,9 +125,19 @@ function App() {
           element={<LecturerCreateCourse />}
         />
         <Route path="/lecturer/courses" element={<LecturerCourses />} />
-        <Route path="/lecturer/analytics" element={<LecturerAnalytics />} />
-        <Route path="/lecturer/profile" element={<LecturerProfile />} />
-        <Route path="/createquiz" element={<CreateQuiz />} />
+        <Route
+          path="/lecturer/analytics"
+          element={
+            <ProtectedRoute allowedRole="lecturer">
+              <LecturerAnalytics />
+            </ProtectedRoute>
+          }
+        />{" "}
+<Route path="/lecturer/profile" element={
+  <ProtectedRoute allowedRole="lecturer">
+    <LecturerProfile />
+  </ProtectedRoute>
+} />        <Route path="/createquiz" element={<CreateQuiz />} />
         <Route path="/upload" element={<UploadMaterials />} />
       </Route>
       <Route element={<ProtectedRoute />}>
@@ -139,7 +153,14 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/editlecturerprofile" element={<EditLecturerProfile />} />
+      <Route
+        path="/editlecturerprofile"
+        element={
+          <ProtectedRoute allowedRole="lecturer">
+            <EditLecturerProfile />
+          </ProtectedRoute>
+        }
+      />{" "}
       <Route path="/learningpath" element={<LearningPath />} />
       <Route
         path="/leaderboard"

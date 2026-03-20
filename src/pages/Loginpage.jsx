@@ -6,32 +6,48 @@ import { IoEyeOffOutline, IoEyeOutline } from "react-icons/io5";
 
 function Loginpage() {
   const navigate = useNavigate();
-  const {login} = useAuth();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
-      email: "",
-      password: "",
-    });
+    email: "",
+    password: "",
+  });
 
- const [error, setError] = useState("");
- const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    if (!formData.email || !formData.password) {
-      setError("Please fill all fields");
-      return;
+    try {
+      // Use formData.email and formData.password here
+      const result = await login(formData.email, formData.password);
+
+      if (result.success) {
+        console.log("✅ Login successful, redirecting...");
+
+        // Redirect based on user role
+        if (result.user.role === "student") {
+          navigate("/studentdashboard");
+        } else if (result.user.role === "lecturer") {
+          navigate("/lecturerdashboard");
+        } else if (result.user.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      } else {
+        setError(result.message || "Login failed");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-
-    const result = login(formData.email, formData.password);
-    if (!result.success) {
-      setError(result.message);
-      return;
-    }
-
-    navigate("/redirect");
   };
 
   return (
@@ -50,7 +66,8 @@ function Loginpage() {
               type="email"
               placeholder="Email"
               name="email"
-              className="w-full px-4 py-2 rounded-lg outline-none border border-[#5a6499]  text-left placeholder:text-gray-400"
+              value={formData.email}
+              className="w-full px-4 py-2 rounded-lg outline-none border border-[#5a6499] text-left placeholder:text-gray-400"
               required
             />
           </div>
@@ -64,37 +81,40 @@ function Loginpage() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 name="password"
+                value={formData.password}
                 className="w-full px-4 py-2 rounded-lg outline-none border border-[#5a6499] text-left placeholder:text-gray-400"
               />
-               <span
-                            className="absolute right-3 top-3 cursor-pointer text-gray-500
-                          "
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? <IoEyeOutline /> : <IoEyeOffOutline />}
-                          </span>
-                          {error && (
-                            <p className="text-red-500 text-sm mt-1">{error}</p>
-                          )}
+              <span
+                className="absolute right-3 top-3 cursor-pointer text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <IoEyeOutline /> : <IoEyeOffOutline />}
+              </span>
             </div>
 
-            <div 
-            className="flex justify-end mt-2 text-[#5a6499] font-light cursor-pointer"
-            onClick={() => navigate("/forgotpassword")}>
+            <div
+              className="flex justify-end mt-2 text-[#5a6499] font-light cursor-pointer"
+              onClick={() => navigate("/forgotpassword")}
+            >
               Forgot Password?
             </div>
           </div>
 
-          <div className=" mt-10 flex justify-center ">
+          {error && (
+            <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+          )}
+
+          <div className="mt-10 flex justify-center">
             <button
               type="submit"
-              className="mt-5 text-white bg-[#5a6499] font-bold cursor-pointer w-full py-3 rounded-sm"
+              disabled={loading}
+              className="mt-5 text-white bg-[#5a6499] font-bold cursor-pointer w-full py-3 rounded-sm disabled:opacity-50"
             >
-              SIGN IN
+              {loading ? "SIGNING IN..." : "SIGN IN"}
             </button>
           </div>
 
-          <div className=" mt-8 text-center">
+          <div className="mt-8 text-center">
             <p className="text-black font-light text-xl">
               New Here?{" "}
               <span

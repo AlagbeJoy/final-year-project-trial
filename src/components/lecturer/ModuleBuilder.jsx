@@ -4,9 +4,9 @@ import QuizBuilder from "./QuizBuilder";
 import BulkUploader from "./BulkUploader";
 import FileManager from "./FileManager";
 
-
-function ModuleBuilder({ modules, updateModules }) {
+function ModuleBuilder({ modules, updateModules, courseData }) {
   const [expandedModule, setExpandedModule] = useState(null);
+  const [showFileManager, setShowFileManager] = useState({});
 
   const addModule = () => {
     const newModule = {
@@ -37,34 +37,47 @@ function ModuleBuilder({ modules, updateModules }) {
       updateModules(modules.filter((m) => m.id !== moduleId));
       if (expandedModule === moduleId) setExpandedModule(null);
     }
+  };
 
-const handleBulkUpload = (uploadedFiles) => {
-  const newLessons = uploadedFiles.map((file, index) => ({
-    id: Date.now() + index,
-    title: file.name,
-    type: file.type.includes("video") ? "video" : "reading",
-    content: file.url,
-    duration: "Auto",
-    xpReward: 10,
-    completed: false,
-  }));
+  const handleBulkUpload = (moduleId, uploadedFiles) => {
+    const currentModule = modules.find((m) => m.id === moduleId);
+    if (!currentModule) return;
 
-  updateModule(module.id, {
-    lessons: [...(module.lessons || []), ...newLessons],
-  });
-};
+    const newLessons = uploadedFiles.map((file, index) => ({
+      id: Date.now() + index,
+      title: file.name,
+      type: file.type?.includes("video") ? "video" : "reading",
+      content: file.url || "",
+      duration: "Auto",
+      xpReward: 10,
+      completed: false,
+    }));
 
-    const [showFileManager, setShowFileManager] = useState(false);
+    updateModule(moduleId, {
+      lessons: [...(currentModule.lessons || []), ...newLessons],
+    });
+  };
 
+  const toggleFileManager = (moduleId) => {
+    setShowFileManager((prev) => ({
+      ...prev,
+      [moduleId]: !prev[moduleId],
+    }));
   };
 
   return (
     <div className="space-y-4">
+      {modules.length === 0 && (
+        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+          No modules yet. Click the button below to add your first module.
+        </div>
+      )}
+
       {modules.map((module, index) => (
         <div key={module.id} className="border rounded-lg overflow-hidden">
           {/* Module Header */}
           <div
-            className="bg-gray-50 p-4 flex items-center justify-between cursor-pointer"
+            className="bg-gray-50 p-4 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition"
             onClick={() =>
               setExpandedModule(expandedModule === module.id ? null : module.id)
             }
@@ -82,7 +95,7 @@ const handleBulkUpload = (uploadedFiles) => {
                   onChange={(e) =>
                     updateModule(module.id, { title: e.target.value })
                   }
-                  className="font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#5a6499] focus:outline-none px-1"
+                  className="font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#5a6499] focus:outline-none px-1 w-full"
                 />
                 <p className="text-sm text-gray-500">
                   {module.lessons?.length || 0} lessons
@@ -119,16 +132,20 @@ const handleBulkUpload = (uploadedFiles) => {
                     updateModule(module.id, { description: e.target.value })
                   }
                   rows="2"
-                  className="w-full border p-2 rounded"
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-[#5a6499] focus:border-transparent"
                   placeholder="Describe what this module covers..."
                 />
-                <div className="mb-4">
-                  <h4 className="font-medium mb-2">📤 Bulk Upload Materials</h4>
-                  <BulkUploader
-                    onUploadComplete={handleBulkUpload}
-                    acceptedFileTypes={[".pdf", ".mp4", ".jpg", ".png"]}
-                  />
-                </div>
+              </div>
+
+              {/* Bulk Upload Section */}
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium mb-2">📤 Bulk Upload Materials</h4>
+                <BulkUploader
+                  onUploadComplete={(files) =>
+                    handleBulkUpload(module.id, files)
+                  }
+                  acceptedFileTypes={[".pdf", ".mp4", ".jpg", ".png"]}
+                />
               </div>
 
               {/* Lessons Section */}
@@ -141,22 +158,22 @@ const handleBulkUpload = (uploadedFiles) => {
                 />
               </div>
 
+              {/* Course Materials Toggle */}
               <div className="mt-4 pt-4 border-t">
                 <button
-                  onClick={() => setShowFileManager(!showFileManager)}
+                  onClick={() => toggleFileManager(module.id)}
                   className="text-[#5a6499] hover:text-[#4a5499] font-medium flex items-center gap-2"
                 >
-                  <span>{showFileManager ? "▼" : "▶"}</span>
+                  <span>{showFileManager[module.id] ? "▼" : "▶"}</span>
                   📁 Course Materials
                 </button>
 
-                {showFileManager && (
+                {showFileManager[module.id] && (
                   <div className="mt-4">
                     <FileManager
-                      courseId={courseData.id}
+                      courseId={courseData?.id}
                       moduleId={module.id}
                       onFilesUpdate={(files) => {
-                        // Optionally update module with file references
                         updateModule(module.id, { materials: files });
                       }}
                     />
@@ -165,7 +182,7 @@ const handleBulkUpload = (uploadedFiles) => {
               </div>
 
               {/* Quiz Section */}
-              <div className="border-t pt-4">
+              <div className="border-t pt-4 mt-4">
                 <h4 className="font-medium mb-3">Module Quiz</h4>
                 <QuizBuilder
                   quiz={module.quiz}
@@ -181,7 +198,7 @@ const handleBulkUpload = (uploadedFiles) => {
       {/* Add Module Button */}
       <button
         onClick={addModule}
-        className="w-full border-2 border-dashed border-gray-300 p-4 rounded-lg text-gray-500 hover:text-[#5a6499] hover:border-[#5a6499] transition"
+        className="w-full border-2 border-dashed border-gray-300 p-4 rounded-lg text-gray-500 hover:text-[#5a6499] hover:border-[#5a6499] transition font-medium"
       >
         + Add New Module
       </button>
