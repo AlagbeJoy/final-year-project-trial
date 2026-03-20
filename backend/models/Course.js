@@ -49,6 +49,26 @@ const courseSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  units: [
+    {
+      title: String,
+      lecture: {
+        content: String,
+        videoUrl: String,
+        materials: Array,
+      },
+      quiz: {
+        questions: [
+          {
+            question: String,
+            options: [String],
+            correctAnswer: Number,
+          },
+        ],
+      },
+      xpReward: Number,
+    },
+  ],
   thumbnail: String,
   prerequisites: {
     requiredXP: Number,

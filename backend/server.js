@@ -15,6 +15,7 @@ app.use(
   }),
 );
 
+// IMPORTANT: Place express.json() BEFORE routes
 app.use(express.json());
 
 // MongoDB Connection
@@ -23,11 +24,15 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// Routes
+// Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
+const courseRoutes = require("./routes/courses"); // Import once
+
+// Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/courses", courseRoutes); // Use once
 
 // Test route
 app.get("/api/test", (req, res) => {

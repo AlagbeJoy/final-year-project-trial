@@ -1,15 +1,19 @@
 const express = require("express");
-const router = express.Router();
 const User = require("../models/User");
+const auth = require("../middleware/auth");
+const router = express.Router();
 
-// Onboarding route
-router.post("/onboarding", async (req, res) => {
+// Onboarding route with auth
+router.post("/onboarding", auth, async (req, res) => {
   try {
     const { onboardingData, xpEarned } = req.body;
 
-    // Get user from auth token (you'll need auth middleware)
-    // For now, let's assume we have the user email from the request
-    const userEmail = req.body.email || "test@example.com"; // You'll need to get this from token
+    // Get user ID from auth token
+    // For now, we'll use email from the decoded token
+    // You should have proper JWT verification
+    const userEmail = req.user?.email || req.body.email;
+
+    console.log("📝 Updating onboarding for:", userEmail);
 
     // Find and update user
     const user = await User.findOneAndUpdate(
@@ -29,35 +33,30 @@ router.post("/onboarding", async (req, res) => {
           },
         },
       },
-      { new: true, upsert: false },
+      { new: true },
     );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("✅ Onboarding completed for:", user.email);
+
     res.json({
       message: "Onboarding completed",
-      user,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        onboarded: user.onboarded,
+        xp: user.xp,
+        level: user.level,
+        profile: user.profile,
+      },
     });
   } catch (error) {
-    console.error("Onboarding error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// Get user profile
-router.get("/profile", async (req, res) => {
-  try {
-    const userEmail = req.query.email || "test@example.com";
-    const user = await User.findOne({ email: userEmail });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json({ user });
-  } catch (error) {
+    console.error("❌ Onboarding error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
