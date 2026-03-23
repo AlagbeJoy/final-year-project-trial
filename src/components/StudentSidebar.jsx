@@ -50,7 +50,7 @@ function StudentSidebar() {
     <aside className="w-64 bg-white border-r min-h-screen p-6 flex flex-col">
       {/* Logo */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#5a6499]">E-Learn</h2>
+        <h2 className="text-xl font-bold text-[#5a6499]">FastMinds</h2>
         <p className="text-xs text-gray-500 mt-1">Student Portal</p>
       </div>
 

@@ -27,7 +27,8 @@ function AdminSidebar() {
   return (
     <aside className="w-64 bg-white border-r min-h-screen p-6 flex flex-col">
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#5a6499]">Admin Portal</h2>
+        <div className="text-xl font-bold text-[#5a6499]">FastMinds</div>
+        <h2 className="text-l font-medium text-[#5a6499]">Admin Portal</h2>
         <p className="text-xs text-gray-500 mt-1">System Management</p>
       </div>
 

@@ -22,8 +22,8 @@ function Header() {
   return (
     <>
       <div className="px-8 py-5 ">
-        <div className="flex justify-between items-center">
-          Logo
+        <div className="text-xl font-bold text-[#5a6499]">
+          FastMinds
           <div className="justify-end flex gap-5">
             <p
               className="hover:bg-[#5a6499] hover:text-white rounded-full py-2 px-5 font-medium border border-[#5a6499] text-[#5a6499]"

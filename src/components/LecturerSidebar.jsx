@@ -18,7 +18,9 @@ function LecturerSidebar() {
 
   return (
     <aside className="w-64 bg-white border-r min-h-screen p-6 flex flex-col">
-      <h2 className="text-xl font-bold text-[#5a6499] mb-8">Lecturer Portal</h2>
+      <div className="text-xl font-bold text-[#5a6499]">FastMinds</div>
+
+      <h2 className="text-xs text-gray-500 mt-1 mb-7">Lecturer Portal</h2>
 
       <nav className="space-y-2 flex-1">
         <NavLink className={linkClass} to="/lecturerdashboard">
