@@ -13,99 +13,48 @@ function AdminDashboard() {
     totalCoursesPending: 0,
     activeToday: 0,
     totalXP: 0,
-    totalQuizzes: 0,
-    totalQuestions: 0,
   });
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [users, setUsers] = useState([]);
   const [pendingCourses, setPendingCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [systemLogs, setSystemLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "student",
+  });
 
   useEffect(() => {
-    fetchAllData();
+    fetchData();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Get all users
-      const users = await api.getAllUsers();
-      const courses = await api.getCourses();
+      const usersData = await api.getAllUsers();
+      setUsers(usersData);
 
-      // Calculate stats
-      const pendingCourses = courses.filter((c) => !c.published);
-      const totalQuizzes = courses.reduce(
-        (sum, c) =>
-          sum +
-          (c.units?.filter((u) => u.quiz?.questions?.length > 0).length || 0),
-        0,
-      );
-      const totalQuestions = courses.reduce(
-        (sum, c) =>
-          sum +
-          (c.units?.reduce((s, u) => s + (u.quiz?.questions?.length || 0), 0) ||
-            0),
-        0,
-      );
+      const courses = await api.getCourses();
+      const pending = courses.filter((c) => !c.published);
+      setPendingCourses(pending);
 
       const today = new Date().toDateString();
-      const activeToday = users.filter((u) =>
+      const activeToday = usersData.filter((u) =>
         u.activities?.some((a) => new Date(a.date).toDateString() === today),
       ).length;
 
-      // Get recent activities (last 10)
-      const allActivities = [];
-      users.forEach((user) => {
-        if (user.activities) {
-          user.activities.forEach((activity) => {
-            allActivities.push({
-              user: user.name,
-              userEmail: user.email,
-              ...activity,
-              date: new Date(activity.date),
-            });
-          });
-        }
-      });
-      const recentActivities = allActivities
-        .sort((a, b) => b.date - a.date)
-        .slice(0, 10);
-
       setStats({
-        totalUsers: users.length,
-        totalStudents: users.filter((u) => u.role === "student").length,
-        totalLecturers: users.filter((u) => u.role === "lecturer").length,
+        totalUsers: usersData.length,
+        totalStudents: usersData.filter((u) => u.role === "student").length,
+        totalLecturers: usersData.filter((u) => u.role === "lecturer").length,
         totalCourses: courses.length,
-        totalCoursesPending: pendingCourses.length,
+        totalCoursesPending: pending.length,
         activeToday,
-        totalXP: users.reduce((sum, u) => sum + (u.xp || 0), 0),
-        totalQuizzes,
-        totalQuestions,
+        totalXP: usersData.reduce((sum, u) => sum + (u.xp || 0), 0),
       });
-
-      setPendingCourses(pendingCourses.slice(0, 5));
-      setRecentActivities(recentActivities);
-
-      // Generate system logs (simulated)
-      const logs = [
-        {
-          time: new Date(),
-          level: "info",
-          message: "System started successfully",
-        },
-        {
-          time: new Date(Date.now() - 3600000),
-          level: "info",
-          message: "Daily backup completed",
-        },
-        {
-          time: new Date(Date.now() - 7200000),
-          level: "warning",
-          message: "High API response time detected",
-        },
-      ];
-      setSystemLogs(logs);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -116,28 +65,51 @@ function AdminDashboard() {
   const approveCourse = async (courseId) => {
     try {
       await api.updateCourse(courseId, { published: true });
-      fetchAllData(); // Refresh data
-      alert("Course approved successfully!");
+      await fetchData();
+      alert("✅ Course approved!");
     } catch (error) {
-      console.error("Error approving course:", error);
-      alert("Failed to approve course");
+      alert("Failed to approve");
     }
   };
 
   const deleteUser = async (userId, userEmail) => {
     if (
-      window.confirm(
-        `Are you sure you want to delete user ${userEmail}? This action cannot be undone.`,
-      )
+      window.confirm(`Delete user ${userEmail}? This action cannot be undone.`)
     ) {
       try {
         await api.deleteUser(userId);
-        fetchAllData();
-        alert("User deleted successfully!");
+        await fetchData();
+        alert("User deleted successfully");
       } catch (error) {
-        console.error("Error deleting user:", error);
         alert("Failed to delete user");
       }
+    }
+  };
+
+  const addUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    try {
+      await api.register(newUser);
+      alert("User added successfully!");
+      setShowAddUser(false);
+      setNewUser({ name: "", email: "", password: "", role: "student" });
+      await fetchData();
+    } catch (error) {
+      alert("Failed to add user");
+    }
+  };
+
+  const changeUserRole = async (userId, newRole) => {
+    try {
+      await api.updateUserRole(userId, newRole);
+      await fetchData();
+      alert("Role updated successfully");
+    } catch (error) {
+      alert("Failed to update role");
     }
   };
 
@@ -145,7 +117,7 @@ function AdminDashboard() {
     return (
       <div className="flex min-h-screen bg-gray-100">
         <AdminSidebar />
-        <main className="flex-1 p-8">Loading dashboard...</main>
+        <main className="flex-1 p-8">Loading...</main>
       </div>
     );
   }
@@ -155,249 +127,216 @@ function AdminDashboard() {
       <AdminSidebar />
 
       <main className="flex-1 p-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">System Management & Oversight</p>
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+
+        {/* Tabs */}
+        <div className="flex border-b mb-6">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-6 py-3 font-medium transition ${
+              activeTab === "overview"
+                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`px-6 py-3 font-medium transition ${
+              activeTab === "users"
+                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Users ({stats.totalUsers})
+          </button>
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={`px-6 py-3 font-medium transition ${
+              activeTab === "pending"
+                ? "text-[#5a6499] border-b-2 border-[#5a6499]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Pending ({stats.totalCoursesPending})
+          </button>
         </div>
 
-        {/* Database Status */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-green-700 font-medium">
-              ✅ Connected to MongoDB Atlas
-            </span>
-            <span className="text-sm text-gray-500 ml-auto">
-              Last sync: {new Date().toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            title="Total Users"
-            value={stats.totalUsers}
-            icon="👥"
-            color="bg-blue-500"
-          />
-          <StatCard
-            title="Students"
-            value={stats.totalStudents}
-            icon="🎓"
-            color="bg-green-500"
-          />
-          <StatCard
-            title="Lecturers"
-            value={stats.totalLecturers}
-            icon="👨‍🏫"
-            color="bg-purple-500"
-          />
-          <StatCard
-            title="Courses"
-            value={stats.totalCourses}
-            icon="📚"
-            color="bg-yellow-500"
-          />
-          <StatCard
-            title="Pending Approval"
-            value={stats.totalCoursesPending}
-            icon="⏳"
-            color="bg-orange-500"
-          />
-          <StatCard
-            title="Active Today"
-            value={stats.activeToday}
-            icon="🔥"
-            color="bg-red-500"
-          />
-          <StatCard
-            title="Total XP"
-            value={stats.totalXP.toLocaleString()}
-            icon="⭐"
-            color="bg-indigo-500"
-          />
-          <StatCard
-            title="Quiz Questions"
-            value={stats.totalQuestions}
-            icon="📝"
-            color="bg-pink-500"
-          />
-        </div>
-
-        {/* Admin Actions & Pending Approvals */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Pending Course Approvals */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span>⏳</span> Pending Course Approvals
-            </h2>
-            {pendingCourses.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">
-                No pending courses
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {pendingCourses.map((course) => (
-                  <div
-                    key={course._id}
-                    className="border rounded-lg p-3 flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-medium">{course.title}</p>
-                      <p className="text-sm text-gray-500">
-                        By: {course.instructor?.name || "Unknown"}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => approveCourse(course._id)}
-                      className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                    >
-                      Approve
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* System Health */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span>⚙️</span> System Health
-            </h2>
-            <div className="space-y-3">
-              <HealthItem
-                label="API Status"
-                value="Operational"
-                status="good"
-              />
-              <HealthItem label="Database" value="Connected" status="good" />
-              <HealthItem label="Storage" value="72% Used" status="warning" />
-              <HealthItem
-                label="Last Backup"
-                value="2 hours ago"
-                status="good"
-              />
-              <HealthItem label="Active Sessions" value="24" status="good" />
+        {/* Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded shadow">
+              <p>Total Users</p>
+              <p className="text-2xl font-bold">{stats.totalUsers}</p>
+            </div>
+            <div className="bg-white p-4 rounded shadow">
+              <p>Students</p>
+              <p className="text-2xl font-bold">{stats.totalStudents}</p>
+            </div>
+            <div className="bg-white p-4 rounded shadow">
+              <p>Lecturers</p>
+              <p className="text-2xl font-bold">{stats.totalLecturers}</p>
+            </div>
+            <div className="bg-white p-4 rounded shadow">
+              <p>Courses</p>
+              <p className="text-2xl font-bold">{stats.totalCourses}</p>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* User Management & Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* User Management Table */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span>👥</span> Recent Users
-            </h2>
-            <div className="overflow-x-auto">
+        {/* Users Tab */}
+        {activeTab === "users" && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">User Management</h2>
+              <button
+                onClick={() => setShowAddUser(!showAddUser)}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              >
+                + Add User
+              </button>
+            </div>
+
+            {/* Add User Form */}
+            {showAddUser && (
+              <div className="bg-white p-4 rounded shadow mb-4">
+                <h3 className="font-semibold mb-3">Add New User</h3>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={newUser.name}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, name: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={newUser.password}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, password: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                  <select
+                    value={newUser.role}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, role: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  >
+                    <option value="student">Student</option>
+                    <option value="lecturer">Lecturer</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addUser}
+                    className="bg-[#5a6499] text-white px-4 py-2 rounded"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => setShowAddUser(false)}
+                    className="border px-4 py-2 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Users Table */}
+            <div className="bg-white rounded shadow overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm">Name</th>
-                    <th className="px-4 py-2 text-left text-sm">Role</th>
-                    <th className="px-4 py-2 text-center text-sm">Actions</th>
+                    <th className="px-4 py-3 text-left">Name</th>
+                    <th className="px-4 py-3 text-left">Email</th>
+                    <th className="px-4 py-3 text-left">Role</th>
+                    <th className="px-4 py-3 text-left">XP</th>
+                    <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {/* This would fetch from API */}
+                  {users.map((user) => (
+                    <tr key={user._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">{user.name}</td>
+                      <td className="px-4 py-3">{user.email}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={user.role}
+                          onChange={(e) =>
+                            changeUserRole(user._id, e.target.value)
+                          }
+                          className="border rounded px-2 py-1 text-sm"
+                        >
+                          <option value="student">Student</option>
+                          <option value="lecturer">Lecturer</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">{user.xp || 0}</td>
+                      <td className="px-4 py-3">
+                        {user.role !== "admin" && (
+                          <button
+                            onClick={() => deleteUser(user._id, user.email)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
+        )}
 
-          {/* Recent Activity Feed */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span>📊</span> Recent Activity
-            </h2>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {recentActivities.map((activity, i) => (
-                <div key={i} className="flex items-start gap-3 p-2 border-b">
-                  <span className="text-xl">
-                    {activity.type === "enrollment" && "📚"}
-                    {activity.type === "lesson" && "📖"}
-                    {activity.type === "quiz" && "📝"}
-                    {activity.type === "achievement" && "🏆"}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.user}</p>
-                    <p className="text-xs text-gray-500">{activity.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {activity.date.toLocaleString()}
+        {/* Pending Tab */}
+        {activeTab === "pending" && (
+          <div className="bg-white rounded shadow p-4">
+            <h2 className="text-xl font-bold mb-4">Pending Course Approvals</h2>
+            {pendingCourses.length === 0 ? (
+              <p className="text-gray-400">No pending courses</p>
+            ) : (
+              pendingCourses.map((course) => (
+                <div
+                  key={course._id}
+                  className="border p-4 rounded mb-3 flex justify-between items-center"
+                >
+                  <div>
+                    <p className="font-bold">{course.title}</p>
+                    <p className="text-sm text-gray-500">
+                      By: {course.instructor?.name}
                     </p>
                   </div>
-                  {activity.xp > 0 && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                      +{activity.xp} XP
-                    </span>
-                  )}
+                  <button
+                    onClick={() => approveCourse(course._id)}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Approve
+                  </button>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
-        </div>
-
-        {/* System Logs */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span>📋</span> System Logs
-          </h2>
-          <div className="space-y-2 font-mono text-sm">
-            {systemLogs.map((log, i) => (
-              <div
-                key={i}
-                className={`p-2 rounded ${
-                  log.level === "error"
-                    ? "bg-red-50 text-red-700"
-                    : log.level === "warning"
-                      ? "bg-yellow-50 text-yellow-700"
-                      : "bg-gray-50 text-gray-700"
-                }`}
-              >
-                <span className="text-xs text-gray-400">
-                  {log.time.toLocaleString()}
-                </span>
-                <span className="ml-2">[{log.level.toUpperCase()}]</span>
-                <span className="ml-2">{log.message}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </main>
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon, color }) {
-  return (
-    <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition">
-      <div
-        className={`${color} w-10 h-10 rounded-full flex items-center justify-center text-white text-xl mb-3`}
-      >
-        {icon}
-      </div>
-      <p className="text-gray-500 text-sm">{title}</p>
-      <p className="text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-function HealthItem({ label, value, status }) {
-  const colors = {
-    good: "text-green-600 bg-green-100",
-    warning: "text-yellow-600 bg-yellow-100",
-    bad: "text-red-600 bg-red-100",
-  };
-
-  return (
-    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50">
-      <span className="text-gray-600">{label}</span>
-      <span className={`px-2 py-1 rounded text-xs ${colors[status]}`}>
-        {value}
-      </span>
     </div>
   );
 }

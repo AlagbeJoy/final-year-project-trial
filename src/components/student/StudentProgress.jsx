@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Add the title map
+const courseTitles = {
+  "69b35183fd4cc2bfcd798aa9": "Test Case",
+  "69c05a5ab202059dae3b06ab": "Introduction to Programming",
+  "69c079d4b202059dae3b0c85": "Introduction to Programming",
+  "69c084bdbcb76c5067bb2d72": "Andrew's Programming Course",
+  "69c09debca0c1f52f6cf7ffa": "Web Development Basics",
+  "69c0ac63ca0c1f52f6cf87f5": "Fresh Test Course",
+};
+
 function StudentProgress({ user }) {
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
@@ -16,7 +26,7 @@ function StudentProgress({ user }) {
       const courses = user.profile.enrolledCourses;
       setEnrolledCourses(courses);
 
-      // Calculate real stats
+      // Calculate real stats from localStorage progress
       let totalUnits = 0;
       let completedUnits = 0;
       let coursesCompleted = 0;
@@ -24,15 +34,15 @@ function StudentProgress({ user }) {
       courses.forEach((course) => {
         const courseId = course.courseId || course.id;
 
-        // Get saved progress for this course
+        // Get saved progress from localStorage
         const savedProgress = JSON.parse(
           localStorage.getItem(`course_${courseId}_progress`) || "{}",
         );
 
-        // Get total units from the stored course data
+        // Get total units from the course data
         const totalUnitsInCourse = course.units?.length || 1;
-        const completedUnitsInCourse = Object.keys(savedProgress).filter(
-          (key) => savedProgress[key].quizPassed,
+        const completedUnitsInCourse = Object.values(savedProgress).filter(
+          (p) => p.quizPassed === true,
         ).length;
 
         totalUnits += totalUnitsInCourse;
@@ -47,7 +57,9 @@ function StudentProgress({ user }) {
       });
 
       const overallProgress =
-        totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+        totalUnits > 0
+          ? Math.min(Math.round((completedUnits / totalUnits) * 100), 100)
+          : 0;
 
       setStats({
         totalUnits,
@@ -63,11 +75,16 @@ function StudentProgress({ user }) {
     const savedProgress = JSON.parse(
       localStorage.getItem(`course_${courseId}_progress`) || "{}",
     );
-    const completedUnits = Object.keys(savedProgress).filter(
-      (key) => savedProgress[key].quizPassed,
+    const completedUnits = Object.values(savedProgress).filter(
+      (p) => p.quizPassed === true,
     ).length;
     const totalUnits = course.units?.length || 1;
-    return Math.round((completedUnits / totalUnits) * 100);
+    return Math.min(Math.round((completedUnits / totalUnits) * 100), 100);
+  };
+
+  // Get display title for a course
+  const getCourseTitle = (course) => {
+    return course.title || courseTitles[course.courseId] || "Course";
   };
 
   if (enrolledCourses.length === 0) {
@@ -131,7 +148,7 @@ function StudentProgress({ user }) {
 
           {enrolledCourses.slice(0, 3).map((course, index) => {
             const courseProgress = getCourseProgress(course);
-            const courseTitle = course.title || `Course ${index + 1}`;
+            const courseTitle = getCourseTitle(course);
 
             return (
               <div key={index} className="mb-3">

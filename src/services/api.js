@@ -180,6 +180,17 @@ class ApiService {
     });
   }
 
+  async addActivity(type, message, xp = 0) {
+    return this.request("/activities", {
+      method: "POST",
+      body: JSON.stringify({ type, message, xp }),
+    });
+  }
+
+  async getActivities() {
+    return this.request("/activities");
+  }
+
   // Logout helper
   logout() {
     localStorage.removeItem("token");

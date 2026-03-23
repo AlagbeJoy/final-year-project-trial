@@ -40,25 +40,64 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("users", JSON.stringify(users));
   };
 
- const register = async (name, email, password, role) => {
-   try {
-     console.log("📝 Registering user:", { name, email, role });
+  const register = async (name, email, password, role) => {
+    try {
+      console.log("📝 Registering user:", { name, email, role });
 
-     const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      console.log("✅ Registration successful:", data);
+
+      // Calculate level for new user
+      const userWithLevel = {
+        ...data.user,
+        level: calculateLevel(data.user.xp || 0),
+      };
+
+      localStorage.setItem("currentUser", JSON.stringify(userWithLevel));
+      localStorage.setItem("token", data.token);
+      setCurrentUser(userWithLevel);
+
+      return { success: true, user: userWithLevel };
+    } catch (error) {
+      console.error("❌ Registration error:", error);
+      return { success: false, message: error.message };
+    }
+  };
+
+ const login = async (email, password) => {
+   try {
+     const response = await fetch(`${API_URL}/auth/login`, {
        method: "POST",
-       headers: {
-         "Content-Type": "application/json",
-       },
-       body: JSON.stringify({ name, email, password, role }),
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ email, password }),
      });
 
      const data = await response.json();
 
      if (!response.ok) {
-       throw new Error(data.message || "Registration failed");
+       return { success: false, message: data.message };
      }
 
-     console.log("✅ Registration successful:", data);
+     // Load activities from API
+     const activitiesRes = await fetch(`${API_URL}/activities`, {
+       headers: { Authorization: `Bearer ${data.token}` },
+     });
+     const activities = await activitiesRes.json();
+
+     data.user.activities = activities;
 
      localStorage.setItem("currentUser", JSON.stringify(data.user));
      localStorage.setItem("token", data.token);
@@ -66,94 +105,64 @@ export const AuthProvider = ({ children }) => {
 
      return { success: true, user: data.user };
    } catch (error) {
-     console.error("❌ Registration error:", error);
-     return { success: false, message: error.message };
+     console.error("Login error:", error);
+     return { success: false, message: "Login failed" };
    }
  };
 
-const login = async (email, password) => {
-  try {
-    console.log("🔐 Login attempt:", email);
-     console.log("📤 Sending password:", password);
+  const completeOnboarding = async (onboardingData, xpEarned) => {
+    try {
+      console.log("📝 Completing onboarding:", onboardingData);
+      console.log("🔧 API_URL being used:", API_URL);
 
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+      const token = localStorage.getItem("token");
+      const currentUserData = JSON.parse(localStorage.getItem("currentUser"));
 
-    const data = await response.json();
+      console.log("👤 Current user email:", currentUserData?.email);
+      console.log("🔑 Token exists:", !!token);
 
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.message || "Invalid email or password",
+      const url = `${API_URL}/users/onboarding`;
+      console.log("📡 Fetching URL:", url);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: currentUserData?.email,
+          onboardingData,
+          xpEarned,
+        }),
+      });
+
+      console.log("📥 Response status:", response.status);
+
+      const data = await response.json();
+      console.log("📦 Response data:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Onboarding failed");
+      }
+
+      console.log("✅ Onboarding successful:", data);
+
+      // Calculate level after onboarding
+      const userWithLevel = {
+        ...data.user,
+        level: calculateLevel(data.user.xp || 0),
       };
+
+      setCurrentUser(userWithLevel);
+      localStorage.setItem("currentUser", JSON.stringify(userWithLevel));
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Onboarding error:", error);
+      return { success: false, message: error.message };
     }
-
-    console.log("✅ Login successful:", data);
-
-    localStorage.setItem("currentUser", JSON.stringify(data.user));
-    localStorage.setItem("token", data.token);
-    setCurrentUser(data.user);
-
-    return { success: true, user: data.user };
-  } catch (error) {
-    console.error("❌ Login error:", error);
-    return { success: false, message: "Login failed. Please try again." };
-  }
-};
-
- const completeOnboarding = async (onboardingData, xpEarned) => {
-   try {
-     console.log("📝 Completing onboarding:", onboardingData);
-     console.log("🔧 API_URL being used:", API_URL);
-
-     const token = localStorage.getItem("token");
-     const currentUserData = JSON.parse(localStorage.getItem("currentUser"));
-
-     console.log("👤 Current user email:", currentUserData?.email);
-     console.log("🔑 Token exists:", !!token);
-
-     const url = `${API_URL}/users/onboarding`;
-     console.log("📡 Fetching URL:", url);
-
-     // IMPORTANT: Include the email in the request body
-     const response = await fetch(url, {
-       method: "POST",
-       headers: {
-         "Content-Type": "application/json",
-         Authorization: `Bearer ${token}`,
-       },
-       body: JSON.stringify({
-         email: currentUserData?.email, // ← ADD THIS LINE
-         onboardingData,
-         xpEarned,
-       }),
-     });
-
-     console.log("📥 Response status:", response.status);
-
-     const data = await response.json();
-     console.log("📦 Response data:", data);
-
-     if (!response.ok) {
-       throw new Error(data.message || "Onboarding failed");
-     }
-
-     console.log("✅ Onboarding successful:", data);
-
-     setCurrentUser(data.user);
-     localStorage.setItem("currentUser", JSON.stringify(data.user));
-
-     return { success: true };
-   } catch (error) {
-     console.error("❌ Onboarding error:", error);
-     return { success: false, message: error.message };
-   }
- };
+  };
 
   const getCourses = () => {
     const courses = localStorage.getItem("courses");
@@ -190,6 +199,7 @@ const login = async (email, password) => {
     const updatedUser = {
       ...currentUser,
       xp: (currentUser.xp || 0) + 5,
+      level: calculateLevel((currentUser.xp || 0) + 5), // Recalculate level
       profile: {
         ...currentUser.profile,
         enrolledCourses: [
@@ -212,6 +222,7 @@ const login = async (email, password) => {
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem("currentUser");
+    localStorage.removeItem("token");
   };
 
   const createCourse = (courseData) => {
@@ -249,7 +260,7 @@ const login = async (email, password) => {
     let updatedUser = {
       ...currentUser,
       xp: newXP,
-      level: newLevel,
+      level: newLevel, // Level already recalculated
       badges: newBadges,
       activities: [newActivity, ...(currentUser.activities || [])],
     };
@@ -293,25 +304,29 @@ const login = async (email, password) => {
   const updateUser = (userData) => {
     const users = getUsers();
 
+    // CRITICAL: Recalculate level based on XP
+    const userWithLevel = {
+      ...userData,
+      level: calculateLevel(userData.xp || 0),
+    };
+
+    const newBadges = badgeService.checkNewBadges(userWithLevel);
+    let updatedUserData = userWithLevel;
+
+    if (newBadges.length > 0) {
+      updatedUserData = badgeService.awardBadges(userWithLevel, newBadges);
+      console.log("New badges earned:", newBadges);
+    }
+
     const updatedUsers = users.map((u) =>
-      u.email === userData.email ? userData : u,
+      u.email === updatedUserData.email ? updatedUserData : u,
     );
 
-     const newBadges = badgeService.checkNewBadges(userData);
-  let updatedUserData = userData;
-  
-  if (newBadges.length > 0) {
-    updatedUserData = badgeService.awardBadges(userData, newBadges);
-
-    console.log("New badges earned:", newBadges);
-  }
-
     saveUsers(updatedUsers);
-    setCurrentUser(userData);
+    setCurrentUser(updatedUserData);
     localStorage.setItem("currentUser", JSON.stringify(updatedUserData));
 
-      return updatedUserData;
-
+    return updatedUserData;
   };
 
   const generateAndStoreLearningPath = () => {
@@ -399,43 +414,43 @@ const login = async (email, password) => {
     return badges;
   };
 
- const updateStreak = () => {
-   if (!currentUser) return;
+  const updateStreak = () => {
+    if (!currentUser) return;
 
-   const today = new Date().toDateString();
-   const last = currentUser.lastActive;
-   let streak = currentUser.streak || 0;
+    const today = new Date().toDateString();
+    const last = currentUser.lastActive;
+    let streak = currentUser.streak || 0;
 
-   if (!last) {
-     streak = 1;
-   } else {
-     const yesterday = new Date();
-     yesterday.setDate(yesterday.getDate() - 1);
+    if (!last) {
+      streak = 1;
+    } else {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
 
-     if (new Date(last).toDateString() === yesterday.toDateString()) {
-       streak += 1;
-     } else if (new Date(last).toDateString() !== today) {
-       streak = 1;
-     }
-   }
+      if (new Date(last).toDateString() === yesterday.toDateString()) {
+        streak += 1;
+      } else if (new Date(last).toDateString() !== today) {
+        streak = 1;
+      }
+    }
 
-   if (currentUser.streak !== streak || currentUser.lastActive !== today) {
-     const updatedUser = {
-       ...currentUser,
-       lastActive: today,
-       streak,
-     };
+    if (currentUser.streak !== streak || currentUser.lastActive !== today) {
+      const updatedUser = {
+        ...currentUser,
+        lastActive: today,
+        streak,
+      };
 
-     const users = getUsers();
-     const updatedUsers = users.map((u) =>
-       u.email === currentUser.email ? updatedUser : u,
-     );
+      const users = getUsers();
+      const updatedUsers = users.map((u) =>
+        u.email === currentUser.email ? updatedUser : u,
+      );
 
-     saveUsers(updatedUsers);
-     setCurrentUser(updatedUser);
-     localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-   }
- };
+      saveUsers(updatedUsers);
+      setCurrentUser(updatedUser);
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+    }
+  };
 
   const calculateLevel = (xp = 0) => {
     return Math.floor(xp / 100) + 1;
@@ -474,6 +489,31 @@ const login = async (email, password) => {
     }
   };
 
+  // Add this function inside your AuthContext (after other functions)
+  const updateCourseProgress = (courseId, progress) => {
+    if (!currentUser) return;
+
+    const users = getUsers();
+
+    const updatedUser = {
+      ...currentUser,
+      profile: {
+        ...currentUser.profile,
+        enrolledCourses: currentUser.profile.enrolledCourses.map((course) => {
+          if (course.courseId === courseId || course.id === courseId) {
+            return { ...course, progress: progress };
+          }
+          return course;
+        }),
+      },
+    };
+
+    saveUsers(
+      users.map((u) => (u.email === updatedUser.email ? updatedUser : u)),
+    );
+    setCurrentUser(updatedUser);
+    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+  };
 
   return (
     <AuthContext.Provider
@@ -493,12 +533,12 @@ const login = async (email, password) => {
         completeLesson,
         updateStreak,
         refreshUser,
+        updateCourseProgress,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
-};;
+};;;
 
-
-export const useAuth = () =>  useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext);

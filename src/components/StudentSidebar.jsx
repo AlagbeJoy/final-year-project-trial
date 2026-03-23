@@ -93,18 +93,18 @@ function StudentSidebar() {
           </NavLink>
         ))}
       </nav>
-      {/* XP Progress Bar */}
+      {/* XP Progress Bar - Real-time update */}
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <div className="flex justify-between text-xs text-gray-600 mb-1">
-          <span>Level {currentLevel}</span>
+          <span>Level {currentUser?.level || 1}</span>
           <span>
-            {currentXP} / {currentLevel * 100} XP
+            {currentUser?.xp || 0} / {(currentUser?.level || 1) * 100} XP
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-[#5a6499] h-2 rounded-full transition-all duration-300"
-            style={{ width: `${currentXP % 100}%` }}
+            style={{ width: `${Math.min((currentUser?.xp || 0) % 100, 100)}%` }}
           ></div>
         </div>
       </div>

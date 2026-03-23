@@ -4,91 +4,114 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 function StudentProgress() {
-  const { currentUser } = useAuth();
+  const { currentUser } = useAuth(); // Make sure this is here
   const navigate = useNavigate();
-  const [expandedCourse, setExpandedCourse] = useState(null);
-  const [statistics, setStatistics] = useState({
-    totalXP: 0,
-    totalLessons: 0,
-    completedLessons: 0,
-    totalQuizzes: 0,
-    completedQuizzes: 0,
-    averageScore: 0,
-    totalTimeSpent: 0,
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [stats, setStats] = useState({
+    totalUnits: 0,
+    completedUnits: 0,
+    overallProgress: 0,
     coursesCompleted: 0,
   });
 
-  if (!currentUser) return <div>Loading...</div>;
-
-  const enrolledCourses = currentUser?.profile?.enrolledCourses || [];
-
   useEffect(() => {
-    // Calculate detailed statistics
-    let totalLessons = 0;
-    let completedLessons = 0;
-    let totalQuizzes = 0;
-    let completedQuizzes = 0;
-    let totalScore = 0;
-    let quizCount = 0;
+    if (currentUser?.profile?.enrolledCourses) {
+      const courses = currentUser.profile.enrolledCourses;
+      console.log("📚 Enrolled courses:", courses);
+      setEnrolledCourses(courses);
+      calculateStats(courses);
+    }
+  }, [currentUser]);
+
+  const calculateStats = (courses) => {
+    let totalUnits = 0;
+    let completedUnits = 0;
     let coursesCompleted = 0;
 
-    enrolledCourses.forEach((course) => {
-      const courseLessons =
-        course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) ||
-        0;
+    courses.forEach((course) => {
+      const courseId = course.courseId || course.id;
 
-      const courseCompleted = course.completedLessons?.length || 0;
-      const courseQuizzes = course.modules?.filter((m) => m.quiz).length || 0;
-      const courseQuizzesCompleted = course.completedQuizzes?.length || 0;
+      const savedProgress = JSON.parse(
+        localStorage.getItem(`course_${courseId}_progress`) || "{}",
+      );
+      const totalUnitsInCourse = course.units?.length || 1;
+      const completedUnitsInCourse = Object.values(savedProgress).filter(
+        (p) => p.quizPassed === true,
+      ).length;
 
-      totalLessons += courseLessons;
-      completedLessons += courseCompleted;
-      totalQuizzes += courseQuizzes;
-      completedQuizzes += courseQuizzesCompleted;
+      totalUnits += totalUnitsInCourse;
+      completedUnits += completedUnitsInCourse;
 
-      if (course.progress === 100) coursesCompleted++;
-    });
-
-    // Get quiz scores from activities
-    const quizActivities =
-      currentUser.activities?.filter((a) => a.type === "quiz") || [];
-    quizActivities.forEach((quiz) => {
-      const score = parseInt(quiz.message.match(/\d+%/)?.[0] || "0");
-      if (score > 0) {
-        totalScore += score;
-        quizCount++;
+      if (
+        completedUnitsInCourse === totalUnitsInCourse &&
+        totalUnitsInCourse > 0
+      ) {
+        coursesCompleted++;
       }
     });
 
-    setStatistics({
-      totalXP: currentUser.xp || 0,
-      totalLessons,
-      completedLessons,
-      totalQuizzes,
-      completedQuizzes,
-      averageScore: quizCount > 0 ? Math.round(totalScore / quizCount) : 0,
-      totalTimeSpent: completedLessons * 15 + completedQuizzes * 10, // estimate
+    const overallProgress =
+      totalUnits > 0
+        ? Math.min(Math.round((completedUnits / totalUnits) * 100), 100)
+        : 0;
+
+    setStats({
+      totalUnits,
+      completedUnits,
+      overallProgress,
       coursesCompleted,
     });
-  }, [currentUser, enrolledCourses]);
+  };
 
-  const overallProgress =
-    statistics.totalLessons > 0
-      ? Math.round(
-          (statistics.completedLessons / statistics.totalLessons) * 100,
-        )
-      : 0;
+  const getCourseProgress = (course) => {
+    const courseId = course.courseId || course.id;
+    const savedProgress = JSON.parse(
+      localStorage.getItem(`course_${courseId}_progress`) || "{}",
+    );
+    const completedUnits = Object.values(savedProgress).filter(
+      (p) => p.quizPassed === true,
+    ).length;
+    const totalUnits = course.units?.length || 1;
+    return Math.min(Math.round((completedUnits / totalUnits) * 100), 100);
+  };
+
+  if (!currentUser) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <StudentSidebar />
+        <main className="flex-1 p-8">
+          <div className="text-center">Loading...</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (enrolledCourses.length === 0) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <StudentSidebar />
+        <main className="flex-1 p-8">
+          <div className="text-center py-12 bg-white rounded-xl shadow">
+            <p className="text-gray-500">No courses enrolled yet</p>
+            <button
+              onClick={() => navigate("/studentcourses")}
+              className="mt-4 bg-[#5a6499] text-white px-6 py-2 rounded-lg"
+            >
+              Browse Courses
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <StudentSidebar />
 
       <main className="flex-1 p-8">
-        {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            📊 My Progress
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-800">📊 My Progress</h1>
           <p className="text-gray-600">
             Track your learning journey and achievements
           </p>
@@ -99,10 +122,9 @@ function StudentProgress() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-90 mb-1">Overall Progress</p>
-              <p className="text-4xl font-bold">{overallProgress}%</p>
+              <p className="text-4xl font-bold">{stats.overallProgress}%</p>
               <p className="text-sm opacity-90 mt-2">
-                {statistics.completedLessons} of {statistics.totalLessons}{" "}
-                lessons completed
+                {stats.completedUnits} of {stats.totalUnits} units completed
               </p>
             </div>
             <div className="w-32 h-32 relative">
@@ -124,12 +146,14 @@ function StudentProgress() {
                   fill="none"
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 54}`}
-                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - overallProgress / 100)}`}
+                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - stats.overallProgress / 100)}`}
                   className="transition-all duration-1000"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold">{overallProgress}%</span>
+                <span className="text-2xl font-bold">
+                  {stats.overallProgress}%
+                </span>
               </div>
             </div>
           </div>
@@ -140,56 +164,32 @@ function StudentProgress() {
           <div className="bg-white rounded-xl shadow-lg p-4">
             <p className="text-gray-500 text-sm">Total XP</p>
             <p className="text-2xl font-bold text-[#5a6499]">
-              {statistics.totalXP}
+              {currentUser.xp || 0}
             </p>
             <p className="text-xs text-gray-400 mt-1">Lifetime earnings</p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <p className="text-gray-500 text-sm">Lessons Done</p>
+            <p className="text-gray-500 text-sm">Units Done</p>
             <p className="text-2xl font-bold text-green-600">
-              {statistics.completedLessons}
+              {stats.completedUnits}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              of {statistics.totalLessons} total
+              of {stats.totalUnits} total
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <p className="text-gray-500 text-sm">Quizzes Passed</p>
+            <p className="text-gray-500 text-sm">Courses</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {statistics.completedQuizzes}
+              {enrolledCourses.length}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              of {statistics.totalQuizzes} total
-            </p>
+            <p className="text-xs text-gray-400 mt-1">Enrolled</p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <p className="text-gray-500 text-sm">Average Score</p>
+            <p className="text-gray-500 text-sm">Completed</p>
             <p className="text-2xl font-bold text-purple-600">
-              {statistics.averageScore}%
+              {stats.coursesCompleted}
             </p>
-            <p className="text-xs text-gray-400 mt-1">on quizzes</p>
-          </div>
-        </div>
-
-        {/* Additional Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <p className="text-gray-500 text-sm">Time Invested</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {Math.round(statistics.totalTimeSpent / 60)} hours
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Approximately {statistics.totalTimeSpent} minutes
-            </p>
-          </div>
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <p className="text-gray-500 text-sm">Courses Completed</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {statistics.coursesCompleted}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              of {enrolledCourses.length} enrolled
-            </p>
+            <p className="text-xs text-gray-400 mt-1">Courses finished</p>
           </div>
         </div>
 
@@ -198,105 +198,46 @@ function StudentProgress() {
           <h2 className="text-xl font-semibold mb-6">
             Course Progress Details
           </h2>
+          <div className="space-y-4">
+            {enrolledCourses.map((course, index) => {
+              const courseProgress = getCourseProgress(course);
+              const totalUnits = course.units?.length || 1;
+              const completedUnits = Math.round(
+                (courseProgress / 100) * totalUnits,
+              );
+              const courseTitle = course.title || "Course";
 
-          {enrolledCourses.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400 mb-4">No courses enrolled yet.</p>
-              <button
-                onClick={() => navigate("/studentcourses")}
-                className="bg-[#5a6499] text-white px-6 py-2 rounded-lg"
-              >
-                Browse Courses
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {enrolledCourses.map((course, index) => {
-                const courseLessons =
-                  course.modules?.reduce(
-                    (acc, m) => acc + (m.lessons?.length || 0),
-                    0,
-                  ) || 0;
-                const courseCompleted = course.completedLessons?.length || 0;
-                const courseProgress =
-                  courseLessons > 0
-                    ? Math.round((courseCompleted / courseLessons) * 100)
-                    : 0;
+              return (
+                <div
+                  key={index}
+                  className="border rounded-lg p-4 hover:shadow-md transition"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold">{courseTitle}</h3>
+                    <span className="text-sm font-bold text-[#5a6499]">
+                      {courseProgress}%
+                    </span>
+                  </div>
 
-                return (
-                  <div
-                    key={index}
-                    className="border rounded-lg p-4 hover:shadow-md transition"
-                  >
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                     <div
-                      className="flex justify-between items-center cursor-pointer"
-                      onClick={() =>
-                        setExpandedCourse(
-                          expandedCourse === index ? null : index,
-                        )
-                      }
-                    >
-                      <div>
-                        <h3 className="font-semibold">{course.title}</h3>
-                        <p className="text-sm text-gray-500">
-                          {courseCompleted} of {courseLessons} lessons completed
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-lg font-bold text-[#5a6499]">
-                          {courseProgress}%
-                        </span>
-                        <span className="text-gray-400">
-                          {expandedCourse === index ? "▼" : "▶"}
-                        </span>
-                      </div>
-                    </div>
+                      className="bg-[#5a6499] h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${courseProgress}%` }}
+                    ></div>
+                  </div>
 
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div
-                        className="bg-[#5a6499] h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${courseProgress}%` }}
-                      ></div>
-                    </div>
-
-                    {expandedCourse === index && (
-                      <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-400">Lessons</p>
-                          <p className="font-medium">
-                            {courseCompleted}/{courseLessons}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Quizzes</p>
-                          <p className="font-medium">
-                            {course.completedQuizzes?.length || 0}/
-                            {course.modules?.filter((m) => m.quiz).length || 0}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Last Activity</p>
-                          <p className="font-medium text-sm">
-                            {course.lastActivity
-                              ? new Date(
-                                  course.lastActivity,
-                                ).toLocaleDateString()
-                              : "Not started"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Enrolled</p>
-                          <p className="font-medium text-sm">
-                            {new Date(course.enrolledAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>
+                      {completedUnits} of {totalUnits} units completed
+                    </span>
+                    {courseProgress === 100 && (
+                      <span className="text-green-600">✓ Completed</span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </main>
     </div>

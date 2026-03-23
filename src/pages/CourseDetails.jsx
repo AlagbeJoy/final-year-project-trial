@@ -16,6 +16,7 @@ function CourseDetails() {
   const [answers, setAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [progress, setProgress] = useState({});
+  const [courseCompleted, setCourseCompleted] = useState(false);
 
   useEffect(() => {
     fetchCourse();
@@ -24,28 +25,96 @@ function CourseDetails() {
   const fetchCourse = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Fetching course:", courseId);
-
       const response = await api.getCourse(courseId);
-      console.log("✅ Course data:", response);
-      console.log("✅ Units:", response.units);
-
       setCourse(response);
 
-      // Load saved progress
       const saved = JSON.parse(
-        localStorage.getItem(`course_${courseId}_progress`) || "{}"
+        localStorage.getItem(`course_${courseId}_progress`) || "{}",
       );
       setProgress(saved);
 
-      // Check if current unit lecture is done
       if (saved[activeUnit]?.lectureDone) {
         setLectureDone(true);
+      }
+
+      // Check if course was already completed
+      const enrolledCourse = currentUser?.profile?.enrolledCourses?.find(
+        (c) => c.courseId === courseId || c.id === courseId,
+      );
+      if (enrolledCourse?.completed) {
+        setCourseCompleted(true);
       }
     } catch (error) {
       console.error("Error fetching course:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to save activity to database
+  const saveActivityToDatabase = async (type, message, xp = 0) => {
+    try {
+      // Call the API to save activity
+      await api.addActivity(type, message, xp);
+      console.log("✅ Activity saved to database:", message);
+    } catch (error) {
+      console.error("Error saving activity:", error);
+    }
+  };
+
+  const calculateOverallProgress = () => {
+    const totalUnits = course?.units?.length || 1;
+    const completedUnits = Object.values(progress).filter(
+      (p) => p.quizPassed,
+    ).length;
+    return Math.min(Math.round((completedUnits / totalUnits) * 100), 100);
+  };
+
+  const checkCourseCompletion = () => {
+    const totalUnits = course?.units?.length || 1;
+    const completedUnits = Object.values(progress).filter(
+      (p) => p.quizPassed,
+    ).length;
+    const isComplete = completedUnits === totalUnits && totalUnits > 0;
+
+    if (isComplete && !courseCompleted) {
+      setCourseCompleted(true);
+
+      const updatedEnrolledCourses = currentUser.profile.enrolledCourses.map(
+        (c) => {
+          if (c.courseId === courseId || c.id === courseId) {
+            return {
+              ...c,
+              completed: true,
+              completedAt: new Date().toISOString(),
+              progress: 100,
+            };
+          }
+          return c;
+        },
+      );
+
+      const updatedUser = {
+        ...currentUser,
+        profile: {
+          ...currentUser.profile,
+          enrolledCourses: updatedEnrolledCourses,
+        },
+        xp: (currentUser.xp || 0) + 100,
+      };
+
+      updateUser(updatedUser);
+
+      // Save completion activity to database
+      saveActivityToDatabase(
+        "achievement",
+        `🎓 Completed course: ${course.title}`,
+        100,
+      );
+
+      alert(
+        `🎉 Congratulations! You've completed ${course.title}! +100 Bonus XP!`,
+      );
     }
   };
 
@@ -58,63 +127,31 @@ function CourseDetails() {
     setProgress(newProgress);
     localStorage.setItem(
       `course_${courseId}_progress`,
-      JSON.stringify(newProgress)
+      JSON.stringify(newProgress),
     );
 
     const unit = course.units[activeUnit];
     const xp = unit?.xpReward / 2 || 40;
 
-    // Update enrolled course progress in user profile
-    const updatedEnrolledCourses = currentUser.profile?.enrolledCourses?.map(
-      (enrolledCourse) => {
-        if (enrolledCourse.courseId === courseId || enrolledCourse.id === courseId) {
-          // Calculate total units
-          const totalUnits = course.units?.length || 1;
-          const completedUnits = Object.values(newProgress).filter(
-            (p) => p.lectureDone
-          ).length;
-          
-          return {
-            ...enrolledCourse,
-            progress: Math.round((completedUnits / totalUnits) * 100),
-            completedUnits: Object.keys(newProgress).filter(
-              (key) => newProgress[key].lectureDone
-            ),
-          };
-        }
-        return enrolledCourse;
-      }
-    ) || [];
+    const totalUnits = course.units?.length || 1;
+    const completedUnits = Object.values(newProgress).filter(
+      (p) => p.quizPassed,
+    ).length;
+    const overallProgress = Math.round((completedUnits / totalUnits) * 100);
 
     const updatedUser = {
       ...currentUser,
       xp: (currentUser.xp || 0) + xp,
-      profile: {
-        ...currentUser.profile,
-        enrolledCourses: updatedEnrolledCourses,
-      },
-      activities: [
-        {
-          type: "lecture",
-          message: `Completed: ${unit?.title}`,
-          xp: xp,
-          date: new Date().toISOString(),
-        },
-        ...(currentUser.activities || []),
-      ],
     };
 
     updateUser(updatedUser);
 
-    // Also update in users array
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const updatedUsers = users.map((u) =>
-      u.email === currentUser.email ? updatedUser : u
-    );
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+    // SAVE ACTIVITY TO DATABASE
+    saveActivityToDatabase("lesson", `Completed: ${unit?.title}`, xp);
 
     alert(`✅ Lecture completed! +${xp} XP`);
+
+    checkCourseCompletion();
   };
 
   const submitQuiz = () => {
@@ -142,60 +179,30 @@ function CourseDetails() {
       setProgress(newProgress);
       localStorage.setItem(
         `course_${courseId}_progress`,
-        JSON.stringify(newProgress)
+        JSON.stringify(newProgress),
       );
 
+      const totalUnits = course.units?.length || 1;
+      const completedUnits = Object.values(newProgress).filter(
+        (p) => p.quizPassed,
+      ).length;
+      const overallProgress = Math.round((completedUnits / totalUnits) * 100);
+
       const xp = unit.xpReward / 2 || 40;
-
-      // Update enrolled course progress
-      const updatedEnrolledCourses = currentUser.profile?.enrolledCourses?.map(
-        (enrolledCourse) => {
-          if (enrolledCourse.courseId === courseId || enrolledCourse.id === courseId) {
-            const totalUnits = course.units?.length || 1;
-            const completedUnits = Object.values(newProgress).filter(
-              (p) => p.quizPassed
-            ).length;
-            
-            return {
-              ...enrolledCourse,
-              progress: Math.round((completedUnits / totalUnits) * 100),
-              completedUnits: Object.keys(newProgress).filter(
-                (key) => newProgress[key].quizPassed
-              ),
-              lastActivity: new Date().toISOString(),
-            };
-          }
-          return enrolledCourse;
-        }
-      ) || [];
-
       const updatedUser = {
         ...currentUser,
         xp: (currentUser.xp || 0) + xp,
-        profile: {
-          ...currentUser.profile,
-          enrolledCourses: updatedEnrolledCourses,
-        },
-        activities: [
-          {
-            type: "quiz",
-            message: `Passed quiz: ${unit.title} with ${score}%`,
-            xp: xp,
-            date: new Date().toISOString(),
-          },
-          ...(currentUser.activities || []),
-        ],
       };
-
       updateUser(updatedUser);
 
-      // Update in users array
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      const updatedUsers = users.map((u) =>
-        u.email === currentUser.email ? updatedUser : u
+      // SAVE QUIZ ACTIVITY TO DATABASE
+      saveActivityToDatabase(
+        "quiz",
+        `Passed quiz: ${unit.title} with ${score}%`,
+        xp,
       );
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+      checkCourseCompletion();
     }
 
     setQuizResult({
@@ -238,29 +245,23 @@ function CourseDetails() {
   const unitProgress = progress[activeUnit] || {};
   const isLocked = activeUnit > 0 && !progress[activeUnit - 1]?.quizPassed;
 
-  // Check if all units are completed
-  const allUnitsCompleted =
-    units.length > 0 && units.every((_, i) => progress[i]?.quizPassed);
-
-  // Course completion view
-  if (allUnitsCompleted) {
+  // If course is completed
+  if (courseCompleted) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <StudentSidebar />
         <main className="flex-1 p-8">
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center max-w-2xl mx-auto">
-            <div className="text-6xl mb-4">🎓</div>
-            <h1 className="text-3xl font-bold mb-4">Congratulations!</h1>
-            <p className="text-xl text-gray-600 mb-6">
-              You've successfully completed {course.title}
-            </p>
-            <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
-              <p className="font-semibold">Course Completed!</p>
-              <p>You've mastered all units and passed all quizzes</p>
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-lg p-12 text-center text-white max-w-2xl mx-auto">
+            <div className="text-6xl mb-4">🏆</div>
+            <h1 className="text-3xl font-bold mb-4">Course Completed!</h1>
+            <p className="text-xl mb-6">You've successfully completed</p>
+            <h2 className="text-2xl font-bold mb-6">{course.title}</h2>
+            <div className="bg-white/20 rounded-lg p-4 mb-8">
+              <p className="text-lg">🎓 +100 Bonus XP Earned!</p>
             </div>
             <button
               onClick={() => navigate("/studentdashboard")}
-              className="bg-[#5a6499] text-white px-6 py-3 rounded-lg"
+              className="bg-white text-green-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
             >
               Back to Dashboard
             </button>
@@ -282,6 +283,9 @@ function CourseDetails() {
           <div className="flex gap-3 mt-3">
             <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
               {course.level}
+            </span>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
+              {calculateOverallProgress()}% Complete
             </span>
           </div>
         </div>
@@ -312,8 +316,8 @@ function CourseDetails() {
                       activeUnit === index
                         ? "bg-[#5a6499] text-white"
                         : unitLocked
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-50 hover:bg-gray-100"
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-50 hover:bg-gray-100"
                     }`}
                   >
                     <div className="flex justify-between items-center">
@@ -360,7 +364,6 @@ function CourseDetails() {
                       {currentUnit.title}
                     </h2>
 
-                    {/* YouTube Video */}
                     {currentUnit.lecture?.videoUrl && (
                       <div className="mb-6">
                         <div className="aspect-video rounded-lg overflow-hidden bg-gray-900">
@@ -374,7 +377,6 @@ function CourseDetails() {
                       </div>
                     )}
 
-                    {/* Lecture Content */}
                     {currentUnit.lecture?.content && (
                       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                         <div className="prose max-w-none whitespace-pre-wrap">
@@ -383,33 +385,22 @@ function CourseDetails() {
                       </div>
                     )}
 
-                    {/* Materials/Downloads */}
                     {currentUnit.lecture?.materials &&
                       currentUnit.lecture.materials.length > 0 && (
                         <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                          <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                            <span>📁</span> Course Materials
+                          <h3 className="font-semibold text-blue-800 mb-3">
+                            📁 Course Materials
                           </h3>
                           <div className="space-y-2">
                             {currentUnit.lecture.materials.map((file, i) => (
                               <a
                                 key={i}
                                 href={file.url}
-                                download={file.name}
-                                className="flex items-center gap-2 p-2 bg-white rounded border hover:shadow transition"
+                                download
+                                className="flex items-center gap-2 p-2 bg-white rounded border"
                               >
-                                <span className="text-xl">
-                                  {file.type?.includes("pdf")
-                                    ? "📄"
-                                    : file.type?.includes("image")
-                                    ? "🖼️"
-                                    : file.type?.includes("zip")
-                                    ? "📦"
-                                    : "📎"}
-                                </span>
-                                <span className="flex-1 text-[#5a6499] hover:underline">
-                                  {file.name}
-                                </span>
+                                <span>📄</span>
+                                <span className="flex-1">{file.name}</span>
                                 <span className="text-xs text-gray-400">
                                   {(file.size / 1024).toFixed(1)} KB
                                 </span>
@@ -419,7 +410,6 @@ function CourseDetails() {
                         </div>
                       )}
 
-                    {/* Mark Complete Button */}
                     {!unitProgress.lectureDone && (
                       <button
                         onClick={markLectureDone}
@@ -430,7 +420,6 @@ function CourseDetails() {
                       </button>
                     )}
 
-                    {/* Quiz Button */}
                     {unitProgress.lectureDone &&
                       !unitProgress.quizPassed &&
                       !quizResult && (
@@ -442,13 +431,12 @@ function CourseDetails() {
                         </button>
                       )}
 
-                    {/* Quiz Passed Message */}
                     {unitProgress.quizPassed && (
                       <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-lg">
-                        <p className="font-semibold flex items-center gap-2">
-                          <span>✓</span> Quiz Passed!
+                        <p className="font-semibold">✓ Quiz Passed!</p>
+                        <p className="text-sm">
+                          Score: {unitProgress.quizScore}%
                         </p>
-                        <p className="text-sm">Score: {unitProgress.quizScore}%</p>
                       </div>
                     )}
                   </>
@@ -511,9 +499,7 @@ function CourseDetails() {
                     ) : (
                       <div className="text-center p-6">
                         <div
-                          className={`text-5xl mb-4 ${
-                            quizResult.passed ? "text-green-500" : "text-red-500"
-                          }`}
+                          className={`text-5xl mb-4 ${quizResult.passed ? "text-green-500" : "text-red-500"}`}
                         >
                           {quizResult.passed ? "🎉" : "😢"}
                         </div>
@@ -528,9 +514,7 @@ function CourseDetails() {
                           </p>
                           <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                             <div
-                              className={`h-2 rounded-full ${
-                                quizResult.passed ? "bg-green-500" : "bg-red-500"
-                              }`}
+                              className={`h-2 rounded-full ${quizResult.passed ? "bg-green-500" : "bg-red-500"}`}
                               style={{ width: `${quizResult.score}%` }}
                             ></div>
                           </div>

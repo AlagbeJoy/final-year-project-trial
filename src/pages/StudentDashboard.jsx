@@ -70,16 +70,11 @@ function StudentDashboard() {
       <StudentSidebar />
 
       <main className="flex-1 px-6 py-6 space-y-6">
-        {/* Welcome Section */}
         <StudentWelcome user={currentUser} />
-
-        {/* Stats Section */}
         <StudentStats user={currentUser} />
 
-        {/* Quick Actions */}
         <StudentQuickActions />
 
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <StudentProgress user={currentUser} />

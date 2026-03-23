@@ -48,77 +48,61 @@ function StudentCourses() {
     }
   };
 
-  const enrollCourse = async (course) => {
-    try {
-      setEnrolling(true);
+const enrollCourse = async (course) => {
+  try {
+    setEnrolling(true);
 
-      const courseId = course._id || course.id;
-      console.log("📝 Enrolling in course:", courseId);
-      console.log("📝 Course object:", course);
+    const courseId = course._id || course.id;
 
-      // IMPORTANT: Fetch the FULL course details including units and title
-      const fullCourse = await api.getCourse(courseId);
-      console.log("✅ Full course details:", fullCourse);
-      console.log("📚 Course units:", fullCourse.units);
-      console.log("📖 Course title:", fullCourse.title);
+    // Get FULL course details from API (includes title)
+    const fullCourse = await api.getCourse(courseId);
+    console.log("Full course data:", fullCourse);
 
-      // Call backend to enroll
-      const response = await api.enrollCourse(courseId);
-      console.log("✅ Enrollment response:", response);
+    // Enroll via API
+    await api.enrollCourse(courseId);
 
-      // Create enrolled course object with COMPLETE data
-      const enrolledCourseData = {
-        courseId: courseId,
-        id: courseId,
-        title: fullCourse.title,
-        description: fullCourse.description,
-        level: fullCourse.level,
-        duration: fullCourse.duration,
-        units: fullCourse.units || [], // Store the full units structure
-        instructor: fullCourse.instructor?.name || "Instructor",
-        enrolledAt: new Date().toISOString(),
-        progress: 0,
-        completedLessons: [],
-        completedQuizzes: [],
-      };
+    // Create enrolled course with ALL data including title
+    const newEnrolledCourse = {
+      courseId: courseId,
+      id: courseId,
+      title: fullCourse.title, // This is the key fix!
+      description: fullCourse.description,
+      level: fullCourse.level,
+      duration: fullCourse.duration,
+      units: fullCourse.units || [],
+      instructor: fullCourse.instructor?.name,
+      enrolledAt: new Date().toISOString(),
+      progress: 0,
+      completedLessons: [],
+      completedQuizzes: [],
+    };
 
-      console.log("📦 Saving enrolled course:", enrolledCourseData);
+    console.log("Saving enrolled course:", newEnrolledCourse);
 
-      // Update user in context with new enrolled course
-      const updatedUser = {
-        ...currentUser,
-        xp: (currentUser.xp || 0) + 50,
-        profile: {
-          ...currentUser.profile,
-          enrolledCourses: [
-            ...(currentUser.profile?.enrolledCourses || []),
-            enrolledCourseData,
-          ],
-        },
-      };
+    // Update user
+    const updatedUser = {
+      ...currentUser,
+      xp: (currentUser.xp || 0) + 50,
+      profile: {
+        ...currentUser.profile,
+        enrolledCourses: [
+          ...(currentUser.profile?.enrolledCourses || []),
+          newEnrolledCourse,
+        ],
+      },
+    };
 
-      // Update context and localStorage
-      updateUser(updatedUser);
+    updateUser(updatedUser);
 
-      // Also update in users array
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      const updatedUsers = users.map((u) =>
-        u.email === currentUser.email ? updatedUser : u,
-      );
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-
-      alert(`✅ Enrolled successfully! +50 XP`);
-
-      // Navigate to course detail
-      navigate(`/course/${courseId}`);
-    } catch (error) {
-      console.error("❌ Error enrolling in course:", error);
-      alert("Failed to enroll. Please try again.");
-    } finally {
-      setEnrolling(false);
-    }
-  };
+    alert(`✅ Enrolled in ${fullCourse.title}! +50 XP`);
+    navigate(`/course/${courseId}`);
+  } catch (error) {
+    console.error("Error enrolling:", error);
+    alert("Failed to enroll");
+  } finally {
+    setEnrolling(false);
+  }
+};
 
   const goToCourse = (courseId) => {
     navigate(`/course/${courseId}`);

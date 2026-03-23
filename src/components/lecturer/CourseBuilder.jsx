@@ -113,18 +113,19 @@ function CourseBuilder({
     const files = Array.from(event.target.files);
     const updatedUnits = [...units];
 
-    if (!updatedUnits[unitIndex].lecture.materials) {
-      updatedUnits[unitIndex].lecture.materials = [];
-    }
-
     files.forEach((file) => {
-      const cleanFile = {
+      // Create a clean material object with ONLY the fields we need
+      const cleanMaterial = {
         name: file.name,
         size: file.size,
         type: file.type,
         url: URL.createObjectURL(file),
       };
-      updatedUnits[unitIndex].lecture.materials.push(cleanFile);
+
+      if (!updatedUnits[unitIndex].lecture.materials) {
+        updatedUnits[unitIndex].lecture.materials = [];
+      }
+      updatedUnits[unitIndex].lecture.materials.push(cleanMaterial);
     });
 
     setUnits(updatedUnits);
