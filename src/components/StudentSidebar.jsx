@@ -57,7 +57,7 @@ function StudentSidebar() {
       {/* User Info - Enhanced but safe */}
       <div className="mb-6 p-4 bg-gradient-to-br from-[#5a6499] to-[#7c83b3] rounded-lg text-white">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl font-bold">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg font-bold">
             {currentUser?.name?.charAt(0) || "S"}
           </div>
           <div className="flex-1">
@@ -66,28 +66,15 @@ function StudentSidebar() {
             </p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                Level {currentLevel}
+                Level {currentUser?.level || 1}
               </span>
               <span className="text-xs bg-yellow-400/20 px-2 py-0.5 rounded-full">
-                {currentXP} XP
+                {currentUser?.xp || 0} XP
               </span>
             </div>
           </div>
         </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/20">
-          <div className="text-center">
-            <p className="text-xs opacity-80">Courses</p>
-            <p className="font-bold">{enrolledCount}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs opacity-80">Streak</p>
-            <p className="font-bold">{streak} 🔥</p>
-          </div>
-        </div>
       </div>
-
       {/* Navigation */}
       <nav className="space-y-1 flex-1">
         {menuItems.map((item) => (
@@ -106,7 +93,6 @@ function StudentSidebar() {
           </NavLink>
         ))}
       </nav>
-
       {/* XP Progress Bar */}
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -122,7 +108,6 @@ function StudentSidebar() {
           ></div>
         </div>
       </div>
-
       {/* Logout Button */}
       <button
         onClick={handleLogout}

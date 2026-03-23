@@ -11,10 +11,17 @@ function StudentCourses() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState([]);
 
   useEffect(() => {
     fetchCourses();
   }, []);
+
+  useEffect(() => {
+    // Get enrolled course IDs from user profile
+    const enrolled = currentUser?.profile?.enrolledCourses || [];
+    setEnrolledCourseIds(enrolled.map((c) => c.courseId || c.id));
+  }, [currentUser]);
 
   const fetchCourses = async () => {
     try {
@@ -23,12 +30,17 @@ function StudentCourses() {
       const response = await api.getCourses();
       console.log("✅ Courses received:", response);
 
-      // Handle different response formats
       const coursesData = Array.isArray(response)
         ? response
         : response.courses || [];
-      setCourses(coursesData);
-      console.log(`📚 Loaded ${coursesData.length} courses`);
+
+      // Only show published courses
+      const publishedCourses = coursesData.filter(
+        (course) => course.published === true,
+      );
+
+      setCourses(publishedCourses);
+      console.log(`📚 Loaded ${publishedCourses.length} published courses`);
     } catch (error) {
       console.error("❌ Error fetching courses:", error);
     } finally {
@@ -40,15 +52,39 @@ function StudentCourses() {
     try {
       setEnrolling(true);
 
-      // MongoDB uses _id, not id
       const courseId = course._id || course.id;
       console.log("📝 Enrolling in course:", courseId);
+      console.log("📝 Course object:", course);
+
+      // IMPORTANT: Fetch the FULL course details including units and title
+      const fullCourse = await api.getCourse(courseId);
+      console.log("✅ Full course details:", fullCourse);
+      console.log("📚 Course units:", fullCourse.units);
+      console.log("📖 Course title:", fullCourse.title);
 
       // Call backend to enroll
       const response = await api.enrollCourse(courseId);
       console.log("✅ Enrollment response:", response);
 
-      // ===== STEP 1: Update student's profile =====
+      // Create enrolled course object with COMPLETE data
+      const enrolledCourseData = {
+        courseId: courseId,
+        id: courseId,
+        title: fullCourse.title,
+        description: fullCourse.description,
+        level: fullCourse.level,
+        duration: fullCourse.duration,
+        units: fullCourse.units || [], // Store the full units structure
+        instructor: fullCourse.instructor?.name || "Instructor",
+        enrolledAt: new Date().toISOString(),
+        progress: 0,
+        completedLessons: [],
+        completedQuizzes: [],
+      };
+
+      console.log("📦 Saving enrolled course:", enrolledCourseData);
+
+      // Update user in context with new enrolled course
       const updatedUser = {
         ...currentUser,
         xp: (currentUser.xp || 0) + 50,
@@ -56,66 +92,21 @@ function StudentCourses() {
           ...currentUser.profile,
           enrolledCourses: [
             ...(currentUser.profile?.enrolledCourses || []),
-            {
-              courseId: courseId,
-              title: course.title,
-              progress: 0,
-              completedLessons: [],
-              completedQuizzes: [],
-              enrolledAt: new Date().toISOString(),
-            },
+            enrolledCourseData,
           ],
         },
       };
 
-      // Update student in localStorage
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      // Update context and localStorage
+      updateUser(updatedUser);
 
-      // Update student in users array
+      // Also update in users array
       const users = JSON.parse(localStorage.getItem("users") || "[]");
       const updatedUsers = users.map((u) =>
         u.email === currentUser.email ? updatedUser : u,
       );
       localStorage.setItem("users", JSON.stringify(updatedUsers));
-
-      // ===== STEP 2: Update course's student list (for lecturer view) =====
-      const allCourses = JSON.parse(
-        localStorage.getItem("lecturer_courses") || "[]",
-      );
-      const updatedCourses = allCourses.map((c) => {
-        // Check if this is the course being enrolled in
-        if (c.id === courseId || c._id === courseId) {
-          // Make sure students array exists
-          const currentStudents = c.students || [];
-
-          // Check if student is already in the list (prevent duplicates)
-          const alreadyEnrolled = currentStudents.some(
-            (s) => s.studentId === currentUser.email,
-          );
-
-          if (!alreadyEnrolled) {
-            return {
-              ...c,
-              students: [
-                ...currentStudents,
-                {
-                  studentId: currentUser.email,
-                  studentName: currentUser.name,
-                  enrolledAt: new Date().toISOString(),
-                },
-              ],
-            };
-          }
-        }
-        return c;
-      });
-
-      // Save updated courses back to localStorage
-      localStorage.setItem("lecturer_courses", JSON.stringify(updatedCourses));
-      console.log("✅ Course student list updated for lecturer view");
-
-      // Update context
-      updateUser(updatedUser);
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
       alert(`✅ Enrolled successfully! +50 XP`);
 
@@ -129,8 +120,9 @@ function StudentCourses() {
     }
   };
 
-  // Get enrolled courses from user profile
-  const enrolledCourses = currentUser?.profile?.enrolledCourses || [];
+  const goToCourse = (courseId) => {
+    navigate(`/course/${courseId}`);
+  };
 
   // Filter courses based on search
   const filteredCourses = courses.filter((course) =>
@@ -180,7 +172,7 @@ function StudentCourses() {
             <p className="text-gray-500 text-lg">No courses found</p>
             <p className="text-sm text-gray-400 mt-2">
               {courses.length === 0
-                ? "No courses have been created yet. Check back later!"
+                ? "No courses have been approved yet. Check back later!"
                 : "Try adjusting your search terms"}
             </p>
           </div>
@@ -188,9 +180,7 @@ function StudentCourses() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCourses.map((course) => {
               const courseId = course._id || course.id;
-              const isEnrolled = enrolledCourses.some(
-                (c) => c.courseId === courseId || c.id === courseId,
-              );
+              const isEnrolled = enrolledCourseIds.includes(courseId);
 
               return (
                 <div
@@ -231,9 +221,7 @@ function StudentCourses() {
 
                     <button
                       onClick={() =>
-                        isEnrolled
-                          ? navigate(`/course/${courseId}`)
-                          : enrollCourse(course)
+                        isEnrolled ? goToCourse(courseId) : enrollCourse(course)
                       }
                       disabled={!isEnrolled && enrolling}
                       className={`w-full py-2 rounded-lg font-semibold transition ${

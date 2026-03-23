@@ -46,6 +46,10 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import FeatureTestPage from "./pages/FeatureTestPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 function App() {
   return (
@@ -133,11 +137,15 @@ function App() {
             </ProtectedRoute>
           }
         />{" "}
-<Route path="/lecturer/profile" element={
-  <ProtectedRoute allowedRole="lecturer">
-    <LecturerProfile />
-  </ProtectedRoute>
-} />        <Route path="/createquiz" element={<CreateQuiz />} />
+        <Route
+          path="/lecturer/profile"
+          element={
+            <ProtectedRoute allowedRole="lecturer">
+              <LecturerProfile />
+            </ProtectedRoute>
+          }
+        />{" "}
+        <Route path="/createquiz" element={<CreateQuiz />} />
         <Route path="/upload" element={<UploadMaterials />} />
       </Route>
       <Route element={<ProtectedRoute />}>
@@ -171,12 +179,43 @@ function App() {
         }
       />{" "}
       <Route path="/test-features" element={<FeatureTestPage />} />
-      // Add admin routes
       <Route
         path="/admin"
         element={
           <AdminRoute>
             <AdminDashboard />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute>
+            <AdminUsers />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/courses"
+        element={
+          <AdminRoute>
+            <AdminCourses />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+          <AdminRoute>
+            <AdminAnalytics />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+          <AdminRoute>
+            <AdminSettings />
           </AdminRoute>
         }
       />

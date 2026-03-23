@@ -3,28 +3,29 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api";
 class ApiService {
   async request(endpoint, options = {}) {
     const url = `${API_URL}${endpoint}`;
+    const token = localStorage.getItem("token");
+
     const headers = {
       "Content-Type": "application/json",
       ...options.headers,
     };
 
-    const token = localStorage.getItem("token");
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(url, { ...options, headers });
+      const data = await response.json();
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Something went wrong");
+      if (!response.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+      return data;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
     }
-
-    return data;
   }
 
   // Auth endpoints
@@ -47,46 +48,30 @@ class ApiService {
     return data;
   }
 
-  // ========== COURSE ENDPOINTS ==========
-
-  /**
-   * Get all courses
-   */
-  async getCourses() {
-    return this.request("/courses", {
-      method: "GET",
-    });
+  // User endpoints
+  async getProfile() {
+    return this.request("/users/profile");
   }
 
-  /**
-   * Get a single course by ID
-   */
-  async getCourse(courseId) {
-    return this.request(`/courses/${courseId}`, {
-      method: "GET",
-    });
-  }
-
-  /**
-   * Create a new course (lecturer only)
-   */
-  async createCourse(courseData) {
-    return this.request("/courses", {
-      method: "POST",
-      body: JSON.stringify(courseData),
-    });
-  }
-
-  /**
-   * Update an existing course (lecturer only)
-   */
-  async updateCourse(courseId, courseData) {
-    return this.request(`/courses/${courseId}`, {
+  async updateProfile(profileData) {
+    return this.request("/users/profile", {
       method: "PUT",
-      body: JSON.stringify(courseData),
+      body: JSON.stringify(profileData),
     });
   }
 
+  async completeOnboarding(onboardingData) {
+    return this.request("/users/onboarding", {
+      method: "POST",
+      body: JSON.stringify(onboardingData),
+    });
+  }
+
+  async getActivities() {
+    return this.request("/users/activities");
+  }
+
+  // Course endpoints
   async getCourses() {
     return this.request("/courses");
   }
@@ -95,56 +80,32 @@ class ApiService {
     return this.request(`/courses/${id}`);
   }
 
-  /**
-   * Delete a course (lecturer only)
-   */
+  async createCourse(courseData) {
+    return this.request("/courses", {
+      method: "POST",
+      body: JSON.stringify(courseData),
+    });
+  }
+
+  async updateCourse(courseId, courseData) {
+    return this.request(`/courses/${courseId}`, {
+      method: "PUT",
+      body: JSON.stringify(courseData),
+    });
+  }
+
   async deleteCourse(courseId) {
     return this.request(`/courses/${courseId}`, {
       method: "DELETE",
     });
   }
 
-  /**
-   * Enroll in a course (student only)
-   */
   async enrollCourse(courseId) {
     return this.request(`/courses/${courseId}/enroll`, {
       method: "POST",
     });
   }
 
-  /**
-   * Unenroll from a course (student only)
-   */
-  async unenrollCourse(courseId) {
-    return this.request(`/courses/${courseId}/unenroll`, {
-      method: "POST",
-    });
-  }
-
-  /**
-   * Get courses a user is enrolled in
-   */
-  async getMyCourses() {
-    return this.request("/courses/my-courses", {
-      method: "GET",
-    });
-  }
-
-  /**
-   * Get courses created by a lecturer
-   */
-  async getMyCreatedCourses() {
-    return this.request("/courses/my-created", {
-      method: "GET",
-    });
-  }
-
-  // ========== LESSON PROGRESS ENDPOINTS ==========
-
-  /**
-   * Complete a lesson and earn XP
-   */
   async completeLesson(courseId, moduleId, lessonId) {
     return this.request(
       `/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/complete`,
@@ -154,72 +115,15 @@ class ApiService {
     );
   }
 
-  /**
-   * Submit a quiz and get results
-   */
-  async submitQuiz(courseId, moduleId, answers) {
-    return this.request(
-      `/courses/${courseId}/modules/${moduleId}/quiz/submit`,
-      {
-        method: "POST",
-        body: JSON.stringify({ answers }),
-      },
-    );
-  }
-
-  // ========== USER PROFILE ENDPOINTS ==========
-
-  /**
-   * Get current user profile
-   */
-  async getProfile() {
-    return this.request("/users/profile", {
-      method: "GET",
-    });
-  }
-
-  /**
-   * Update user profile
-   */
-  async updateProfile(profileData) {
-    return this.request("/users/profile", {
-      method: "PUT",
-      body: JSON.stringify(profileData),
-    });
-  }
-
-  /**
-   * Get user's activity feed
-   */
-  async getActivities() {
-    return this.request("/users/activities", {
-      method: "GET",
-    });
-  }
-
-  /**
-   * Get user's badges
-   */
-  async getBadges() {
-    return this.request("/users/badges", {
-      method: "GET",
-    });
-  }
-
-  // ========== ADMIN ENDPOINTS ==========
-
-  /**
-   * Get all users (admin only)
-   */
+  // Admin endpoints
   async getAllUsers() {
-    return this.request("/admin/users", {
-      method: "GET",
-    });
+    return this.request("/admin/users");
   }
 
-  /**
-   * Update user role (admin only)
-   */
+  async getSystemStats() {
+    return this.request("/admin/stats");
+  }
+
   async updateUserRole(userId, role) {
     return this.request(`/admin/users/${userId}/role`, {
       method: "PUT",
@@ -227,44 +131,65 @@ class ApiService {
     });
   }
 
-  /**
-   * Delete user (admin only)
-   */
   async deleteUser(userId) {
     return this.request(`/admin/users/${userId}`, {
       method: "DELETE",
     });
   }
 
-  /**
-   * Get system stats (admin only)
-   */
-  async getSystemStats() {
-    return this.request("/admin/stats", {
-      method: "GET",
+  async deleteAdminCourse(courseId) {
+    return this.request(`/admin/courses/${courseId}`, {
+      method: "DELETE",
     });
   }
 
-  // ========== UTILITY METHODS ==========
+  // Password reset
+  async requestPasswordReset(email) {
+    return this.request("/password/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
 
-  /**
-   * Logout - clear local storage
-   */
+  async verifyResetCode(email, code) {
+    return this.request("/password/verify-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    });
+  }
+
+  async resetPassword(email, code, newPassword) {
+    return this.request("/password/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, code, newPassword }),
+    });
+  }
+
+  // AI endpoints
+  async generateQuestions(content, numQuestions = 5, difficulty = "medium") {
+    return this.request("/ai/generate-questions", {
+      method: "POST",
+      body: JSON.stringify({ content, numQuestions, difficulty }),
+    });
+  }
+
+  async scoreQuiz(questions, answers) {
+    return this.request("/ai/score-quiz", {
+      method: "POST",
+      body: JSON.stringify({ questions, answers }),
+    });
+  }
+
+  // Logout helper
   logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("currentUser");
   }
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated() {
     return !!localStorage.getItem("token");
   }
 
-  /**
-   * Get current user from localStorage
-   */
   getCurrentUser() {
     const user = localStorage.getItem("currentUser");
     return user ? JSON.parse(user) : null;

@@ -12,6 +12,7 @@ function CourseDetails() {
   const [loading, setLoading] = useState(true);
   const [activeUnit, setActiveUnit] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [lectureDone, setLectureDone] = useState(false);
   const [answers, setAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [progress, setProgress] = useState({});
@@ -23,18 +24,24 @@ function CourseDetails() {
   const fetchCourse = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Looking for course ID:", courseId);
+      console.log("🔍 Fetching course:", courseId);
 
       const response = await api.getCourse(courseId);
-      console.log("✅ Course found:", response);
+      console.log("✅ Course data:", response);
+      console.log("✅ Units:", response.units);
 
       setCourse(response);
 
-      // Load saved progress from localStorage
+      // Load saved progress
       const saved = JSON.parse(
-        localStorage.getItem(`course_${courseId}_progress`) || "{}",
+        localStorage.getItem(`course_${courseId}_progress`) || "{}"
       );
       setProgress(saved);
+
+      // Check if current unit lecture is done
+      if (saved[activeUnit]?.lectureDone) {
+        setLectureDone(true);
+      }
     } catch (error) {
       console.error("Error fetching course:", error);
     } finally {
@@ -42,35 +49,54 @@ function CourseDetails() {
     }
   };
 
-  const markUnitComplete = () => {
-    const unit = currentUnit;
-
-    // Update progress
+  const markLectureDone = () => {
+    setLectureDone(true);
     const newProgress = {
       ...progress,
-      [activeUnit]: {
-        ...progress[activeUnit],
-        completed: true,
-        completedAt: new Date().toISOString(),
-      },
+      [activeUnit]: { ...progress[activeUnit], lectureDone: true },
     };
     setProgress(newProgress);
     localStorage.setItem(
       `course_${courseId}_progress`,
-      JSON.stringify(newProgress),
+      JSON.stringify(newProgress)
     );
 
-    // Award XP (half of unit XP)
+    const unit = course.units[activeUnit];
     const xp = unit?.xpReward / 2 || 40;
 
-    // Update user XP
+    // Update enrolled course progress in user profile
+    const updatedEnrolledCourses = currentUser.profile?.enrolledCourses?.map(
+      (enrolledCourse) => {
+        if (enrolledCourse.courseId === courseId || enrolledCourse.id === courseId) {
+          // Calculate total units
+          const totalUnits = course.units?.length || 1;
+          const completedUnits = Object.values(newProgress).filter(
+            (p) => p.lectureDone
+          ).length;
+          
+          return {
+            ...enrolledCourse,
+            progress: Math.round((completedUnits / totalUnits) * 100),
+            completedUnits: Object.keys(newProgress).filter(
+              (key) => newProgress[key].lectureDone
+            ),
+          };
+        }
+        return enrolledCourse;
+      }
+    ) || [];
+
     const updatedUser = {
       ...currentUser,
       xp: (currentUser.xp || 0) + xp,
+      profile: {
+        ...currentUser.profile,
+        enrolledCourses: updatedEnrolledCourses,
+      },
       activities: [
         {
-          type: "unit",
-          message: `Completed unit: ${unit?.title} in ${course?.title}`,
+          type: "lecture",
+          message: `Completed: ${unit?.title}`,
           xp: xp,
           date: new Date().toISOString(),
         },
@@ -78,22 +104,22 @@ function CourseDetails() {
       ],
     };
 
-    // Update user in context and localStorage
     updateUser(updatedUser);
 
-    // Update user in users array
+    // Also update in users array
     const users = JSON.parse(localStorage.getItem("users") || "[]");
     const updatedUsers = users.map((u) =>
-      u.email === currentUser.email ? updatedUser : u,
+      u.email === currentUser.email ? updatedUser : u
     );
     localStorage.setItem("users", JSON.stringify(updatedUsers));
+    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
-    alert(`✅ Unit completed! +${xp} XP`);
+    alert(`✅ Lecture completed! +${xp} XP`);
   };
 
   const submitQuiz = () => {
-    const unit = currentUnit;
-    if (!unit || !unit.quiz) return;
+    const unit = course.units[activeUnit];
+    if (!unit) return;
 
     let correct = 0;
     unit.quiz.questions.forEach((q, i) => {
@@ -104,34 +130,56 @@ function CourseDetails() {
     const passed = score >= 70;
 
     if (passed) {
-      // Update progress with quiz passed
       const newProgress = {
         ...progress,
         [activeUnit]: {
           ...progress[activeUnit],
-          completed: true,
+          lectureDone: true,
           quizPassed: true,
           quizScore: score,
-          quizCompletedAt: new Date().toISOString(),
         },
       };
       setProgress(newProgress);
       localStorage.setItem(
         `course_${courseId}_progress`,
-        JSON.stringify(newProgress),
+        JSON.stringify(newProgress)
       );
 
-      // Award XP (half of unit XP)
       const xp = unit.xpReward / 2 || 40;
 
-      // Update user XP and activity
+      // Update enrolled course progress
+      const updatedEnrolledCourses = currentUser.profile?.enrolledCourses?.map(
+        (enrolledCourse) => {
+          if (enrolledCourse.courseId === courseId || enrolledCourse.id === courseId) {
+            const totalUnits = course.units?.length || 1;
+            const completedUnits = Object.values(newProgress).filter(
+              (p) => p.quizPassed
+            ).length;
+            
+            return {
+              ...enrolledCourse,
+              progress: Math.round((completedUnits / totalUnits) * 100),
+              completedUnits: Object.keys(newProgress).filter(
+                (key) => newProgress[key].quizPassed
+              ),
+              lastActivity: new Date().toISOString(),
+            };
+          }
+          return enrolledCourse;
+        }
+      ) || [];
+
       const updatedUser = {
         ...currentUser,
         xp: (currentUser.xp || 0) + xp,
+        profile: {
+          ...currentUser.profile,
+          enrolledCourses: updatedEnrolledCourses,
+        },
         activities: [
           {
             type: "quiz",
-            message: `Passed quiz: ${unit?.title} with ${score}%`,
+            message: `Passed quiz: ${unit.title} with ${score}%`,
             xp: xp,
             date: new Date().toISOString(),
           },
@@ -141,12 +189,13 @@ function CourseDetails() {
 
       updateUser(updatedUser);
 
-      // Update user in users array
+      // Update in users array
       const users = JSON.parse(localStorage.getItem("users") || "[]");
       const updatedUsers = users.map((u) =>
-        u.email === currentUser.email ? updatedUser : u,
+        u.email === currentUser.email ? updatedUser : u
       );
       localStorage.setItem("users", JSON.stringify(updatedUsers));
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
     }
 
     setQuizResult({
@@ -157,34 +206,17 @@ function CourseDetails() {
     });
   };
 
-  // Check if a unit is locked (previous unit not completed)
-  const isUnitLocked = (index) => {
-    if (index === 0) return false; // First unit is always unlocked
-    return !progress[index - 1]?.quizPassed; // Lock if previous unit quiz not passed
-  };
-
-  // Check if all units are completed
-  const isCourseCompleted = () => {
-    const units = course?.units || course?.modules || [];
-    if (units.length === 0) return false;
-
-    // Check if last unit's quiz is passed
-    return progress[units.length - 1]?.quizPassed === true;
-  };
-
-  // Get units from either units or modules array
-  const units = course?.units || course?.modules || [];
-  const currentUnit = units[activeUnit];
-  const unitProgress = progress[activeUnit] || {};
-  const unitLocked = isUnitLocked(activeUnit);
-  const courseCompleted = isCourseCompleted();
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <StudentSidebar />
         <main className="flex-1 p-8">
-          <div className="text-center">Loading course...</div>
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-[#5a6499] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading course...</p>
+            </div>
+          </div>
         </main>
       </div>
     );
@@ -201,25 +233,34 @@ function CourseDetails() {
     );
   }
 
-  // If course is completed, show completion message
-  if (courseCompleted) {
+  const units = course.units || [];
+  const currentUnit = units[activeUnit];
+  const unitProgress = progress[activeUnit] || {};
+  const isLocked = activeUnit > 0 && !progress[activeUnit - 1]?.quizPassed;
+
+  // Check if all units are completed
+  const allUnitsCompleted =
+    units.length > 0 && units.every((_, i) => progress[i]?.quizPassed);
+
+  // Course completion view
+  if (allUnitsCompleted) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <StudentSidebar />
         <main className="flex-1 p-8">
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-12 text-center max-w-2xl mx-auto">
             <div className="text-6xl mb-4">🎓</div>
             <h1 className="text-3xl font-bold mb-4">Congratulations!</h1>
             <p className="text-xl text-gray-600 mb-6">
-              You have successfully completed {course.title}
+              You've successfully completed {course.title}
             </p>
             <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
-              <p className="font-semibold">Course Completed</p>
+              <p className="font-semibold">Course Completed!</p>
               <p>You've mastered all units and passed all quizzes</p>
             </div>
             <button
               onClick={() => navigate("/studentdashboard")}
-              className="bg-[#5a6499] text-white px-6 py-3 rounded-lg hover:bg-[#4a5499]"
+              className="bg-[#5a6499] text-white px-6 py-3 rounded-lg"
             >
               Back to Dashboard
             </button>
@@ -235,69 +276,58 @@ function CourseDetails() {
 
       <main className="flex-1 p-8">
         {/* Course Header */}
-        <div className="bg-gradient-to-r from-[#5a6499] to-[#7c83b3] rounded-lg p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-[#5a6499] to-[#7c83b3] rounded-xl p-6 mb-6 text-white">
           <h1 className="text-2xl font-bold">{course.title}</h1>
-          <p className="text-sm opacity-90">{course.description}</p>
-
-          {/* Progress bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Course Progress</span>
-              <span>
-                {Object.values(progress).filter((p) => p.quizPassed).length} /{" "}
-                {units.length} units
-              </span>
-            </div>
-            <div className="w-full bg-white/30 rounded-full h-2">
-              <div
-                className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
-                style={{
-                  width: `${(Object.values(progress).filter((p) => p.quizPassed).length / units.length) * 100}%`,
-                }}
-              ></div>
-            </div>
+          <p className="opacity-90 mt-1">{course.description}</p>
+          <div className="flex gap-3 mt-3">
+            <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
+              {course.level}
+            </span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Unit Sidebar */}
+          {/* Units Sidebar */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-lg p-4">
-              <h2 className="font-bold mb-3">Course Units</h2>
-              {units.map((unit, i) => {
-                const locked = isUnitLocked(i);
-                const unitProg = progress[i] || {};
+            <div className="bg-white rounded-xl p-4">
+              <h2 className="font-bold mb-3">Units</h2>
+              {units.map((unit, index) => {
+                const unitLocked =
+                  index > 0 && !progress[index - 1]?.quizPassed;
+                const unitProg = progress[index] || {};
 
                 return (
                   <button
-                    key={i}
+                    key={index}
                     onClick={() => {
-                      if (!locked) {
-                        setActiveUnit(i);
+                      if (!unitLocked) {
+                        setActiveUnit(index);
                         setShowQuiz(false);
                         setQuizResult(null);
-                        setAnswers({});
+                        setLectureDone(!!progress[index]?.lectureDone);
                       }
                     }}
-                    disabled={locked}
+                    disabled={unitLocked}
                     className={`w-full text-left p-3 rounded mb-2 transition ${
-                      activeUnit === i
+                      activeUnit === index
                         ? "bg-[#5a6499] text-white"
-                        : locked
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "bg-gray-50 hover:bg-gray-100"
+                        : unitLocked
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-gray-50 hover:bg-gray-100"
                     }`}
                   >
                     <div className="flex justify-between items-center">
-                      <span>Unit {i + 1}</span>
+                      <span>Unit {index + 1}</span>
                       <div className="flex gap-1">
-                        {unitProg.completed && (
+                        {unitProg.lectureDone && (
                           <span className="text-green-500">📖</span>
                         )}
                         {unitProg.quizPassed && (
                           <span className="text-green-500">✓</span>
                         )}
-                        {locked && <span className="text-gray-400">🔒</span>}
+                        {unitLocked && (
+                          <span className="text-gray-400">🔒</span>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm truncate">{unit.title}</p>
@@ -310,11 +340,11 @@ function CourseDetails() {
           {/* Unit Content */}
           <div className="md:col-span-3">
             {!currentUnit ? (
-              <div className="bg-white p-8 text-center rounded-lg">
+              <div className="bg-white p-8 text-center rounded-xl">
                 No units in this course
               </div>
-            ) : unitLocked ? (
-              <div className="bg-white p-12 text-center rounded-lg">
+            ) : isLocked ? (
+              <div className="bg-white p-12 text-center rounded-xl">
                 <div className="text-4xl mb-4">🔒</div>
                 <h3 className="text-xl font-bold mb-2">Unit Locked</h3>
                 <p className="text-gray-500">
@@ -323,118 +353,157 @@ function CourseDetails() {
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg p-6">
+              <div className="bg-white rounded-xl p-6">
                 {!showQuiz ? (
                   <>
-                    <h2 className="text-xl font-bold mb-4">
+                    <h2 className="text-2xl font-bold mb-4">
                       {currentUnit.title}
                     </h2>
 
-                    {/* Video */}
+                    {/* YouTube Video */}
                     {currentUnit.lecture?.videoUrl && (
-                      <div className="mb-4">
-                        <iframe
-                          src={currentUnit.lecture.videoUrl}
-                          className="w-full aspect-video rounded"
-                          allowFullScreen
-                        ></iframe>
+                      <div className="mb-6">
+                        <div className="aspect-video rounded-lg overflow-hidden bg-gray-900">
+                          <iframe
+                            src={currentUnit.lecture.videoUrl}
+                            title={currentUnit.title}
+                            className="w-full h-full"
+                            allowFullScreen
+                          ></iframe>
+                        </div>
                       </div>
                     )}
 
                     {/* Lecture Content */}
                     {currentUnit.lecture?.content && (
-                      <div className="mb-4 whitespace-pre-wrap">
-                        {currentUnit.lecture.content}
+                      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="prose max-w-none whitespace-pre-wrap">
+                          {currentUnit.lecture.content}
+                        </div>
                       </div>
                     )}
 
                     {/* Materials/Downloads */}
                     {currentUnit.lecture?.materials &&
                       currentUnit.lecture.materials.length > 0 && (
-                        <div className="mb-4 p-4 bg-gray-50 rounded">
-                          <h3 className="font-semibold mb-2">📁 Materials</h3>
-                          {currentUnit.lecture.materials.map((file, i) => (
-                            <a
-                              key={i}
-                              href={file.url}
-                              download={file.name}
-                              className="block text-[#5a6499] hover:underline mb-1"
-                            >
-                              📄 {file.name}
-                            </a>
-                          ))}
+                        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                          <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                            <span>📁</span> Course Materials
+                          </h3>
+                          <div className="space-y-2">
+                            {currentUnit.lecture.materials.map((file, i) => (
+                              <a
+                                key={i}
+                                href={file.url}
+                                download={file.name}
+                                className="flex items-center gap-2 p-2 bg-white rounded border hover:shadow transition"
+                              >
+                                <span className="text-xl">
+                                  {file.type?.includes("pdf")
+                                    ? "📄"
+                                    : file.type?.includes("image")
+                                    ? "🖼️"
+                                    : file.type?.includes("zip")
+                                    ? "📦"
+                                    : "📎"}
+                                </span>
+                                <span className="flex-1 text-[#5a6499] hover:underline">
+                                  {file.name}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {(file.size / 1024).toFixed(1)} KB
+                                </span>
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       )}
 
-                    {/* Unit Complete Button */}
-                    {!unitProgress.completed && (
+                    {/* Mark Complete Button */}
+                    {!unitProgress.lectureDone && (
                       <button
-                        onClick={markUnitComplete}
-                        className="bg-[#5a6499] text-white px-4 py-2 rounded"
+                        onClick={markLectureDone}
+                        className="bg-[#5a6499] text-white px-6 py-3 rounded-lg hover:bg-[#4a5499] transition"
                       >
-                        Mark Unit Complete (+{currentUnit.xpReward / 2 || 40}{" "}
-                        XP)
+                        ✓ Mark Lecture Complete (+
+                        {currentUnit.xpReward / 2 || 40} XP)
                       </button>
                     )}
 
-                    {/* Quiz Button (shown after unit is completed and quiz not taken) */}
-                    {unitProgress.completed &&
+                    {/* Quiz Button */}
+                    {unitProgress.lectureDone &&
                       !unitProgress.quizPassed &&
                       !quizResult && (
                         <button
                           onClick={() => setShowQuiz(true)}
-                          className="bg-yellow-500 text-white px-4 py-2 rounded mt-4"
+                          className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition mt-4"
                         >
-                          Take Quiz (+{currentUnit.xpReward / 2 || 40} XP)
+                          📝 Take Quiz (+{currentUnit.xpReward / 2 || 40} XP)
                         </button>
                       )}
 
-                    {/* Show message if quiz already passed */}
+                    {/* Quiz Passed Message */}
                     {unitProgress.quizPassed && (
-                      <div className="mt-4 p-4 bg-green-100 text-green-700 rounded">
-                        <p className="font-semibold">
-                          ✓ Quiz Passed - Unit Complete
+                      <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-lg">
+                        <p className="font-semibold flex items-center gap-2">
+                          <span>✓</span> Quiz Passed!
                         </p>
-                        <p className="text-sm">
-                          Score: {unitProgress.quizScore}%
-                        </p>
+                        <p className="text-sm">Score: {unitProgress.quizScore}%</p>
                       </div>
                     )}
                   </>
                 ) : (
-                  /* Quiz Section */
+                  // Quiz Section
                   <div>
-                    <h2 className="text-xl font-bold mb-4">
-                      Quiz: {currentUnit.title}
-                    </h2>
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold">
+                        Quiz: {currentUnit.title}
+                      </h2>
+                      <button
+                        onClick={() => setShowQuiz(false)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        ← Back to Lecture
+                      </button>
+                    </div>
 
                     {!quizResult ? (
                       <>
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg text-blue-700">
+                          ⏱️ You need 70% to pass. Take your time!
+                        </div>
+
                         {currentUnit.quiz?.questions.map((q, i) => (
-                          <div key={i} className="mb-4">
-                            <p className="font-medium mb-2">
+                          <div key={i} className="mb-6 border rounded-lg p-4">
+                            <p className="font-medium mb-3">
                               {i + 1}. {q.question}
                             </p>
-                            {q.options.map((opt, o) => (
-                              <label key={o} className="block mb-1">
-                                <input
-                                  type="radio"
-                                  name={`q${i}`}
-                                  value={o}
-                                  checked={answers[i] === o}
-                                  onChange={() =>
-                                    setAnswers({ ...answers, [i]: o })
-                                  }
-                                  className="mr-2"
-                                />
-                                {opt}
-                              </label>
-                            ))}
+                            <div className="space-y-2">
+                              {q.options.map((opt, o) => (
+                                <label
+                                  key={o}
+                                  className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`q${i}`}
+                                    value={o}
+                                    checked={answers[i] === o}
+                                    onChange={() =>
+                                      setAnswers({ ...answers, [i]: o })
+                                    }
+                                    className="w-4 h-4"
+                                  />
+                                  <span>{opt}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         ))}
+
                         <button
                           onClick={submitQuiz}
-                          className="bg-[#5a6499] text-white px-4 py-2 rounded"
+                          className="w-full bg-[#5a6499] text-white py-3 rounded-lg font-semibold hover:bg-[#4a5499] transition"
                         >
                           Submit Quiz
                         </button>
@@ -442,7 +511,9 @@ function CourseDetails() {
                     ) : (
                       <div className="text-center p-6">
                         <div
-                          className={`text-5xl mb-4 ${quizResult.passed ? "text-green-500" : "text-red-500"}`}
+                          className={`text-5xl mb-4 ${
+                            quizResult.passed ? "text-green-500" : "text-red-500"
+                          }`}
                         >
                           {quizResult.passed ? "🎉" : "😢"}
                         </div>
@@ -451,22 +522,31 @@ function CourseDetails() {
                             ? "Congratulations!"
                             : "Try Again!"}
                         </h3>
-                        <p className="text-gray-600 mb-4">
-                          You scored {quizResult.score}% ({quizResult.correct}/
-                          {quizResult.total} correct)
-                        </p>
-                        {quizResult.passed && (
-                          <p className="text-green-600 font-semibold mb-4">
-                            +{currentUnit.xpReward / 2 || 40} XP earned!
+                        <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                          <p className="text-lg font-semibold">
+                            Your Score: {quizResult.score}%
                           </p>
-                        )}
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div
+                              className={`h-2 rounded-full ${
+                                quizResult.passed ? "bg-green-500" : "bg-red-500"
+                              }`}
+                              style={{ width: `${quizResult.score}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-2">
+                            You got {quizResult.correct} out of{" "}
+                            {quizResult.total} correct
+                          </p>
+                        </div>
+
                         <button
                           onClick={() => {
                             setShowQuiz(false);
                             setQuizResult(null);
                             setAnswers({});
                           }}
-                          className="bg-[#5a6499] text-white px-6 py-2 rounded-lg hover:bg-[#4a5499] transition"
+                          className="bg-[#5a6499] text-white px-6 py-2 rounded-lg"
                         >
                           Back to Unit
                         </button>
