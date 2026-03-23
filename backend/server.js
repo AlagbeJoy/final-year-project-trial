@@ -10,7 +10,7 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "https://your-frontend-url.vercel.app"],
     credentials: true,
   }),
 );
@@ -67,3 +67,6 @@ const startServer = (port) => {
 
 const desiredPort = parseInt(process.env.PORT) || 5000;
 startServer(desiredPort);
+
+const activityRoutes = require("./routes/activities");
+app.use("/api/activities", activityRoutes);

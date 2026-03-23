@@ -1,62 +1,60 @@
 const mongoose = require("mongoose");
 
-// Lesson schema (for when you have multiple lessons per unit)
-const lessonSchema = new mongoose.Schema({
-  id: Number,
-  title: String,
-  type: String,
+// Material schema - separate for clarity
+const materialSchema = new mongoose.Schema(
+  {
+    name: String,
+    size: Number,
+    type: String,
+    url: String,
+  },
+  { _id: false },
+); // Don't auto-generate _id for materials
+
+const lectureSchema = new mongoose.Schema({
   content: String,
   videoUrl: String,
-  duration: String,
-  xpReward: Number,
-  completed: Boolean,
+  materials: [materialSchema], // Use the material schema
 });
 
-// Quiz question schema
-const quizQuestionSchema = new mongoose.Schema({
-  id: Number,
-  question: String,
-  options: [String],
-  correctAnswer: Number,
-  explanation: String,
-});
-
-// Updated module/unit schema with lecture field
-const moduleSchema = new mongoose.Schema({
-  id: Number,
-  title: String,
-  description: String,
-
-  // NEW: Lecture field for simple content (what you're using)
-  lecture: {
-    content: String,
-    videoUrl: String,
-    materials: [
-      {
-        name: String,
-        size: Number,
-        type: String,
-        url: String,
-      },
-    ],
+const quizQuestionSchema = new mongoose.Schema(
+  {
+    question: String,
+    options: [String],
+    correctAnswer: Number,
+    explanation: String,
   },
+  { _id: false },
+);
 
-  // Keep lessons for backward compatibility
-  lessons: [lessonSchema],
-
-  quiz: {
-    title: String,
+const quizSchema = new mongoose.Schema(
+  {
     questions: [quizQuestionSchema],
     passingScore: Number,
     xpReward: Number,
   },
-  releaseDate: Date,
-});
+  { _id: false },
+);
+
+const unitSchema = new mongoose.Schema(
+  {
+    title: String,
+    lecture: lectureSchema,
+    quiz: quizSchema,
+    xpReward: { type: Number, default: 80 },
+    releaseDate: Date,
+  },
+  { _id: true },
+);
 
 const courseSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  level: { type: String, enum: ["Beginner", "Intermediate", "Advanced"] },
+  level: {
+    type: String,
+    enum: ["Beginner", "Intermediate", "Advanced"],
+    default: "Beginner",
+  },
   duration: String,
   instructor: {
     type: mongoose.Schema.Types.ObjectId,
@@ -64,14 +62,7 @@ const courseSchema = new mongoose.Schema({
     required: true,
   },
   thumbnail: String,
-  prerequisites: {
-    requiredXP: Number,
-    requiredLevel: Number,
-    requiredSkills: [String],
-    description: String,
-  },
-  units: [moduleSchema],
-  modules: [moduleSchema],
+  units: [unitSchema],
   published: { type: Boolean, default: false },
   students: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   startDate: Date,
