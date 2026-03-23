@@ -15,7 +15,6 @@ app.use(
   }),
 );
 
-// IMPORTANT: Place express.json() BEFORE routes
 app.use(express.json());
 
 // MongoDB Connection
@@ -27,16 +26,24 @@ mongoose
 // Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
-const courseRoutes = require("./routes/courses"); // Import once
+const courseRoutes = require("./routes/courses");
+const adminRoutes = require("./routes/admin");
 
 // Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/courses", courseRoutes); // Use once
+app.use("/api/courses", courseRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Test route
 app.get("/api/test", (req, res) => {
   res.json({ message: "Backend is working!" });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Something went wrong!" });
 });
 
 // Auto-port selection
@@ -58,6 +65,5 @@ const startServer = (port) => {
     });
 };
 
-// Get desired port from .env or default to 5000
 const desiredPort = parseInt(process.env.PORT) || 5000;
 startServer(desiredPort);
