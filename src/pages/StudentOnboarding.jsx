@@ -54,27 +54,18 @@ function StudentOnboarding() {
 
     setIsFinishing(true);
 
+    // Call onboarding (this will save to database)
     completeOnboarding(formData, xp);
+
+    // Track activity locally (optional, backend also adds one)
     trackActivity("Completed Onboarding", 50, "onboarding");
 
     console.log("Onboarding functions called");
 
+    // Navigate after a delay
     setTimeout(() => {
-      const user = JSON.parse(localStorage.getItem("currentUser"));
-      if (user && !user.onboarded) {
-        console.log("Emergency fix: forcing onboarded to true");
-        user.onboarded = true;
-        localStorage.setItem("currentUser", JSON.stringify(user));
-      }
-
-      if (typeof refreshUser === "function") {
-        refreshUser();
-      }
-
-      // refreshUser();
       navigate("/redirect");
-    }, 500);
-
+    }, 1000);
   };
 
   const progressWidth = `${(step / totalSteps) * 100}%`;

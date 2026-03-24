@@ -121,9 +121,7 @@ export const AuthProvider = ({ children }) => {
       console.log("👤 Current user email:", currentUserData?.email);
       console.log("🔑 Token exists:", !!token);
 
-      const url = `${API_URL}/users/onboarding`;
-      console.log("📡 Fetching URL:", url);
-
+      // FIX: Use the correct URL (removed duplicate)
       const response = await fetch(`${API_URL}/users/onboarding`, {
         method: "POST",
         headers: {
@@ -131,9 +129,8 @@ export const AuthProvider = ({ children }) => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: currentUserData?.email,
           onboardingData,
-          xpEarned,
+          xpEarned: xpEarned || 30, // Make sure xp is sent
         }),
       });
 
@@ -148,14 +145,11 @@ export const AuthProvider = ({ children }) => {
 
       console.log("✅ Onboarding successful:", data);
 
-      // Calculate level after onboarding
-      const userWithLevel = {
-        ...data.user,
-        level: calculateLevel(data.user.xp || 0),
-      };
+      // FIX: Use the user data from the response (already has level calculated)
+      const updatedUser = data.user;
 
-      setCurrentUser(data.user);
-      localStorage.setItem("currentUser", JSON.stringify(data.user));
+      setCurrentUser(updatedUser);
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
       return { success: true };
     } catch (error) {
