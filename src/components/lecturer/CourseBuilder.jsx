@@ -512,12 +512,6 @@ function CourseBuilder({
 >
   Next: Review →
 </button>
- <button
-            onClick={() => setActiveTab("publish")}
-            className="bg-[#5a6499] text-white px-6 py-2 rounded"
-          >
-            Next: Review →
-          </button>
         </div>
       </div>
     );
