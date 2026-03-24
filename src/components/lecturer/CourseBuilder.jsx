@@ -497,7 +497,22 @@ function CourseBuilder({
           >
             ← Back
           </button>
-          <button
+         <button 
+  onClick={() => {
+    console.log("Next button clicked");
+    console.log("Units:", units);
+    console.log("Units count:", units.length);
+    if (units.length === 0) {
+      alert("Please add at least one unit");
+      return;
+    }
+    setActiveTab("publish");
+  }}
+  className="bg-[#5a6499] text-white px-6 py-2 rounded"
+>
+  Next: Review →
+</button>
+ <button
             onClick={() => setActiveTab("publish")}
             className="bg-[#5a6499] text-white px-6 py-2 rounded"
           >
@@ -509,75 +524,69 @@ function CourseBuilder({
   }
 
   // PUBLISH TAB
-  if (activeTab === "publish") {
-    const totalQuestions = units.reduce(
-      (sum, unit) => sum + (unit.quiz?.questions?.length || 0),
-      0,
-    );
+if (activeTab === "publish") {
+  console.log("Rendering publish tab");
+  console.log("Units received:", units);
 
+  // Simple fallback if units is empty
+  if (!units || units.length === 0) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-xl font-semibold mb-4">Review & Publish</h2>
-
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="font-semibold text-lg mb-2">
-            {courseData.title || "Untitled Course"}
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {courseData.description || "No description"}
-          </p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <p className="text-xs text-gray-500">Level</p>
-              <p className="font-medium">{courseData.level || "Not set"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Duration</p>
-              <p className="font-medium">
-                {courseData.startDate && courseData.endDate
-                  ? `${new Date(courseData.startDate).toLocaleDateString()} - ${new Date(courseData.endDate).toLocaleDateString()}`
-                  : "Not set"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Units</p>
-              <p className="font-medium">{units.length}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Total Questions</p>
-              <p className="font-medium">{totalQuestions}</p>
-            </div>
-          </div>
-
-          <h4 className="font-semibold mt-4 mb-2">Units Preview:</h4>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {units.map((unit, i) => (
-              <div key={i} className="p-3 bg-white rounded border">
-                <p className="font-medium">
-                  Unit {i + 1}: {unit.title || "Untitled"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {unit.quiz?.questions?.length || 0} question(s)
-                  {unit.lecture?.materials?.length > 0 &&
-                    ` • ${unit.lecture.materials.length} material(s)`}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            onClick={saveCourse}
-            className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold"
-          >
-            🚀 Publish Course
-          </button>
-        </div>
+      <div className="p-4">
+        <h2>No units found. Please go back and add units.</h2>
+        <button
+          onClick={() => setActiveTab("modules")}
+          className="mt-4 bg-gray-500 text-white px-4 py-2 rounded"
+        >
+          Go Back
+        </button>
       </div>
     );
   }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold mb-4">Review & Publish</h2>
+      <div className="bg-gray-50 p-6 rounded-lg">
+        <h3 className="font-semibold text-lg mb-2">
+          {courseData.title || "Untitled Course"}
+        </h3>
+        <p className="text-gray-600 mb-4">
+          {courseData.description || "No description"}
+        </p>
+        <p>
+          <strong>Level:</strong> {courseData.level}
+        </p>
+        <p>
+          <strong>Duration:</strong> {courseData.duration}
+        </p>
+        <p>
+          <strong>Units:</strong> {units.length}
+        </p>
+        <div className="mt-4">
+          <h4 className="font-semibold mb-2">Units Preview:</h4>
+          {units.map((unit, i) => (
+            <div key={i} className="p-2 bg-white rounded mb-1">
+              <p>
+                <strong>Unit {i + 1}:</strong> {unit.title || "Untitled"}
+              </p>
+              <p className="text-sm text-gray-500">
+                Quiz: {unit.quiz?.questions?.length || 0} questions
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={saveCourse}
+          className="bg-green-600 text-white px-8 py-3 rounded-lg"
+        >
+          Publish Course
+        </button>
+      </div>
+    </div>
+  );
+}
 
   return null;
 }
