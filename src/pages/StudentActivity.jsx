@@ -10,38 +10,59 @@ function StudentActivity() {
     weeklyXP: 0,
     achievements: 0,
   });
+  const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-   const fetchActivities = async () => {
-     try {
-       const activities = await api.getActivities();
-       setActivities(activities);
+  useEffect(() => {
+    fetchActivities();
+  }, [currentUser]);
 
-       // Calculate stats
-       const totalXP = activities.reduce((sum, a) => sum + (a.xp || 0), 0);
-       const oneWeekAgo = new Date();
-       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-       const weeklyXP = activities
-         .filter((a) => new Date(a.date) > oneWeekAgo)
-         .reduce((sum, a) => sum + (a.xp || 0), 0);
-       const achievements = activities.filter(
-         (a) => a.type === "achievement",
-       ).length;
+  const fetchActivities = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
 
-       setStats({ totalXP, weeklyXP, achievements });
-     } catch (error) {
-       console.error("Error fetching activities:", error);
-     }
-   };
+      const response = await fetch(
+        "https://elearning-api-j0d9.onrender.com/api/activities",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-   fetchActivities();
- }, []);
+      const data = await response.json();
+      console.log("Activities fetched:", data);
+      setActivities(data || []);
 
-  if (!currentUser) return <div>Loading...</div>;
+      // Calculate stats
+      const totalXP = data.reduce((sum, a) => sum + (a.xp || 0), 0);
 
-  const sortedActivities = [...activities].sort(
-    (a, b) => new Date(b.date) - new Date(a.date),
-  );
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weeklyXP = data
+        .filter((a) => new Date(a.date) > oneWeekAgo)
+        .reduce((sum, a) => sum + (a.xp || 0), 0);
+
+      const achievements = data.filter((a) => a.type === "achievement").length;
+
+      setStats({ totalXP, weeklyXP, achievements });
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <StudentSidebar />
+        <main className="flex-1 p-8">
+          <div className="text-center">Loading activities...</div>
+        </main>
+      </div>
+    );
+  }
 
   const getActivityIcon = (type) => {
     switch (type) {
@@ -53,8 +74,8 @@ function StudentActivity() {
         return "📝";
       case "achievement":
         return "🏆";
-      case "unit":
-        return "📗";
+      case "onboarding":
+        return "🎉";
       default:
         return "⭐";
     }
@@ -70,6 +91,8 @@ function StudentActivity() {
         return "bg-yellow-100 text-yellow-700";
       case "achievement":
         return "bg-purple-100 text-purple-700";
+      case "onboarding":
+        return "bg-pink-100 text-pink-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -105,7 +128,7 @@ function StudentActivity() {
         </div>
 
         {/* Activity List */}
-        {sortedActivities.length === 0 ? (
+        {activities.length === 0 ? (
           <div className="bg-white rounded-xl shadow p-12 text-center">
             <p className="text-gray-400">No activity yet</p>
             <p className="text-sm text-gray-400 mt-2">
@@ -115,28 +138,28 @@ function StudentActivity() {
           </div>
         ) : (
           <div className="space-y-3">
-            {sortedActivities.map((a, i) => (
+            {activities.map((activity, index) => (
               <div
-                key={i}
+                key={index}
                 className="bg-white p-4 rounded-xl shadow hover:shadow-md transition"
               >
                 <div className="flex items-start gap-4">
                   <div
-                    className={`w-10 h-10 ${getActivityColor(a.type)} rounded-full flex items-center justify-center text-xl`}
+                    className={`w-10 h-10 ${getActivityColor(activity.type)} rounded-full flex items-center justify-center text-xl`}
                   >
-                    {getActivityIcon(a.type)}
+                    {getActivityIcon(activity.type)}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{a.message}</p>
+                    <p className="font-medium">{activity.message}</p>
                     <div className="flex items-center gap-3 mt-1">
-                      {a.xp > 0 && (
+                      {activity.xp > 0 && (
                         <span className="text-sm text-green-600">
-                          +{a.xp} XP
+                          +{activity.xp} XP
                         </span>
                       )}
                       <span className="text-sm text-gray-400">
-                        {new Date(a.date).toLocaleDateString()} at{" "}
-                        {new Date(a.date).toLocaleTimeString()}
+                        {new Date(activity.date).toLocaleDateString()} at{" "}
+                        {new Date(activity.date).toLocaleTimeString()}
                       </span>
                     </div>
                   </div>
