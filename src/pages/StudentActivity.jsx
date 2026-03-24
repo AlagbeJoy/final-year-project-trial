@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
 import StudentSidebar from "../components/StudentSidebar";
 
 function StudentActivity() {
-  const { currentUser } = useAuth();
   const [activities, setActivities] = useState([]);
   const [stats, setStats] = useState({
     totalXP: 0,
@@ -14,12 +12,14 @@ function StudentActivity() {
 
   useEffect(() => {
     fetchActivities();
-  }, [currentUser]);
+  }, []);
 
   const fetchActivities = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+
+      console.log("📡 Fetching activities...");
 
       const response = await fetch(
         "https://elearning-api-j0d9.onrender.com/api/activities",
@@ -31,7 +31,7 @@ function StudentActivity() {
       );
 
       const data = await response.json();
-      console.log("Activities fetched:", data);
+      console.log("✅ Activities received:", data);
       setActivities(data || []);
 
       // Calculate stats
@@ -47,22 +47,11 @@ function StudentActivity() {
 
       setStats({ totalXP, weeklyXP, achievements });
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      console.error("❌ Error fetching activities:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        <StudentSidebar />
-        <main className="flex-1 p-8">
-          <div className="text-center">Loading activities...</div>
-        </main>
-      </div>
-    );
-  }
 
   const getActivityIcon = (type) => {
     switch (type) {
@@ -97,6 +86,22 @@ function StudentActivity() {
         return "bg-gray-100 text-gray-700";
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <StudentSidebar />
+        <main className="flex-1 p-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-[#5a6499] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading activities...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
