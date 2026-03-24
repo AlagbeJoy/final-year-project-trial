@@ -396,6 +396,8 @@ function CourseDetails() {
                               <a
                                 key={i}
                                 href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 download
                                 className="flex items-center gap-2 p-2 bg-white rounded border"
                               >

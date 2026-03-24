@@ -124,7 +124,7 @@ export const AuthProvider = ({ children }) => {
       const url = `${API_URL}/users/onboarding`;
       console.log("📡 Fetching URL:", url);
 
-      const response = await fetch(url, {
+      const response = await fetch(`${API_URL}/users/onboarding`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -154,8 +154,8 @@ export const AuthProvider = ({ children }) => {
         level: calculateLevel(data.user.xp || 0),
       };
 
-      setCurrentUser(userWithLevel);
-      localStorage.setItem("currentUser", JSON.stringify(userWithLevel));
+      setCurrentUser(data.user);
+      localStorage.setItem("currentUser", JSON.stringify(data.user));
 
       return { success: true };
     } catch (error) {

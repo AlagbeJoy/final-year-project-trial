@@ -3,21 +3,19 @@ const router = express.Router();
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 
-// Add an activity
+// Add activity
 router.post("/", auth, async (req, res) => {
   try {
-    const { type, message, xp } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.activities) {
-      user.activities = [];
-    }
+    const { type, message, xp } = req.body;
 
-    user.activities.push({
+    if (!user.activities) user.activities = [];
+    user.activities.unshift({
       type,
       message,
       xp: xp || 0,
@@ -26,24 +24,17 @@ router.post("/", auth, async (req, res) => {
 
     await user.save();
 
-    res.json({
-      message: "Activity added",
-      activity: user.activities[user.activities.length - 1],
-    });
+    res.json({ message: "Activity added", activity: user.activities[0] });
   } catch (error) {
     console.error("Error adding activity:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// Get user activities
+// Get activities
 router.get("/", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     res.json(user.activities || []);
   } catch (error) {
     console.error("Error fetching activities:", error);
